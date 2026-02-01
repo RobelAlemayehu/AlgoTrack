@@ -1,11 +1,56 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  LayoutDashboard, Activity, BookOpen, Settings, Bell, 
+import {
+  LayoutDashboard, Activity, BookOpen, Settings, Bell,
   Search, RefreshCw, Flame, Trophy, Code, ChevronLeft, ChevronRight,
   User as UserIcon, Lock, Mail, CheckCircle2, AlertCircle, Plus,
-  BarChart3, TrendingUp, Calendar, Clock, Star, Play, Share2, Edit3
+  BarChart3, TrendingUp, Calendar, Clock, Star, Play, Share2, Edit3, X
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, BarChart, Bar } from 'recharts';
+
+// --- POPUP COMPONENT ---
+const Popup = ({ isOpen, onClose, title, message, type }) => {
+  if (!isOpen) return null;
+
+  const getStyles = () => {
+    switch (type) {
+      case 'success': return { icon: <CheckCircle2 size={24} className="text-emerald-400" />, border: 'border-emerald-500/50', bg: 'bg-emerald-500/10' };
+      case 'error': return { icon: <AlertCircle size={24} className="text-red-400" />, border: 'border-red-500/50', bg: 'bg-red-500/10' };
+      case 'warning': return { icon: <AlertCircle size={24} className="text-yellow-400" />, border: 'border-yellow-500/50', bg: 'bg-yellow-500/10' };
+      default: return { icon: <Activity size={24} className="text-blue-400" />, border: 'border-blue-500/50', bg: 'bg-blue-500/10' };
+    }
+  };
+
+  const style = getStyles();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className={`w-full max-w-md bg-[#151B26] border ${style.border} rounded-xl shadow-2xl transform scale-100 animate-in zoom-in-95 duration-200 overflow-hidden`}>
+        <div className="p-6">
+          <div className="flex items-start gap-4">
+            <div className={`p-3 rounded-full ${style.bg} shrink-0`}>
+              {style.icon}
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
+              <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">{message}</p>
+            </div>
+            <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
+              <X size={20} />
+            </button>
+          </div>
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition-colors border border-gray-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 function App() {
   // --- AUTH & NAVIGATION STATE ---
@@ -25,12 +70,23 @@ function App() {
   const [lastSyncTime, setLastSyncTime] = useState(null);
   const itemsPerPage = 6;
 
+  // --- POPUP STATE ---
+  const [popup, setPopup] = useState({ isOpen: false, title: '', message: '', type: 'info' });
+
+  const showPopup = (title, message, type = 'info') => {
+    setPopup({ isOpen: true, title, message, type });
+  };
+
+  const closePopup = () => {
+    setPopup(prev => ({ ...prev, isOpen: false }));
+  };
+
   // --- 1. AUTHENTICATION LOGIC ---
   const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
     const endpoint = isLoginView ? '/api/auth/login' : '/api/auth/register';
-    
+
     try {
       const res = await fetch(`http://localhost:5000${endpoint}`, {
         method: 'POST',
@@ -38,7 +94,7 @@ function App() {
         body: JSON.stringify(authForm)
       });
       const data = await res.json();
-      
+
       if (data.token) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
@@ -51,10 +107,10 @@ function App() {
         setLastSyncTime(null);
         setUserSettings({ leetcodeHandle: '', codeforcesHandle: '' });
       } else {
-        alert(data.msg || "Authentication failed");
+        showPopup('Authentication Failed', data.msg || "Authentication failed", 'error');
       }
     } catch (err) {
-      alert("Backend server not running on port 5000");
+      showPopup('Connection Error', "Backend server not running on port 5000", 'error');
     }
     setLoading(false);
   };
@@ -77,10 +133,10 @@ function App() {
     if (!token) return;
     try {
       // First get user settings to check if they have handles
-      const settingsRes = await fetch(`http://localhost:5000/api/auth/profile`, { 
-        headers: { 'Authorization': `Bearer ${token}` } 
+      const settingsRes = await fetch(`http://localhost:5000/api/auth/profile`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      
+
       if (settingsRes.ok) {
         const settingsData = await settingsRes.json();
         const handles = {
@@ -88,11 +144,11 @@ function App() {
           codeforcesHandle: settingsData.handles?.codeforces || ''
         };
         setUserSettings(handles);
-        
+
         // Only fetch problems if user has configured handles
         if (handles.leetcodeHandle || handles.codeforcesHandle) {
-          const problemsRes = await fetch(`http://localhost:5000/api/sync/all`, { 
-            headers: { 'Authorization': `Bearer ${token}` } 
+          const problemsRes = await fetch(`http://localhost:5000/api/sync/all`, {
+            headers: { 'Authorization': `Bearer ${token}` }
           });
           const problemsData = await problemsRes.json();
           setProblems(Array.isArray(problemsData) ? problemsData : []);
@@ -105,11 +161,11 @@ function App() {
         setProblems([]);
         setUserSettings({ leetcodeHandle: '', codeforcesHandle: '' });
       }
-      
+
       // Try to fetch analytics (may not exist yet)
       try {
-        const analyticsRes = await fetch(`http://localhost:5000/api/analytics/dashboard`, { 
-          headers: { 'Authorization': `Bearer ${token}` } 
+        const analyticsRes = await fetch(`http://localhost:5000/api/analytics/dashboard`, {
+          headers: { 'Authorization': `Bearer ${token}` }
         });
         if (analyticsRes.ok) {
           const analyticsData = await analyticsRes.json();
@@ -118,11 +174,11 @@ function App() {
       } catch (err) {
         console.log('Analytics endpoint not available yet');
       }
-      
+
       // Try to fetch notes (may not exist yet)
       try {
-        const notesRes = await fetch(`http://localhost:5000/api/notes`, { 
-          headers: { 'Authorization': `Bearer ${token}` } 
+        const notesRes = await fetch(`http://localhost:5000/api/notes`, {
+          headers: { 'Authorization': `Bearer ${token}` }
         });
         if (notesRes.ok) {
           const notesData = await notesRes.json();
@@ -131,7 +187,7 @@ function App() {
       } catch (err) {
         console.log('Notes endpoint not available yet');
       }
-      
+
     } catch (err) {
       console.error("Error fetching data:", err);
       // Clear data on error
@@ -140,16 +196,16 @@ function App() {
     }
   };
 
-  useEffect(() => { 
+  useEffect(() => {
     if (token) {
       fetchData();
-      
+
       // Listen for data updates from settings
       const handleDataUpdate = (event) => {
         setProblems(event.detail.problems);
         setLastSyncTime(new Date());
       };
-      
+
       window.addEventListener('dataUpdated', handleDataUpdate);
       return () => window.removeEventListener('dataUpdated', handleDataUpdate);
     }
@@ -157,27 +213,31 @@ function App() {
 
   const handleSync = async () => {
     if (!userSettings.leetcodeHandle && !userSettings.codeforcesHandle) {
-      alert('Please add your LeetCode or Codeforces handle in Settings first!');
+      showPopup('Configuration Required', 'Please go to Settings and add your LeetCode or Codeforces username first.', 'warning');
+      setActiveTab('Settings'); // Automatically navigate to Settings
       return;
     }
-    
+
     setLoading(true);
     try {
       const syncPromises = [];
-      
+      const platforms = [];
+
       if (userSettings.codeforcesHandle) {
+        platforms.push('Codeforces');
         syncPromises.push(
-          fetch('http://localhost:5000/api/sync/codeforces', { 
-            headers: { 'Authorization': `Bearer ${token}` } 
+          fetch('http://localhost:5000/api/sync/codeforces', {
+            headers: { 'Authorization': `Bearer ${token}` }
           })
         );
       }
-      
+
       if (userSettings.leetcodeHandle) {
+        platforms.push('LeetCode');
         syncPromises.push(
-          fetch('http://localhost:5000/api/sync/leetcode', { 
+          fetch('http://localhost:5000/api/sync/leetcode', {
             method: 'POST',
-            headers: { 
+            headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             },
@@ -185,12 +245,16 @@ function App() {
           })
         );
       }
-      
+
       await Promise.all(syncPromises);
       await fetchData();
       setLastSyncTime(new Date());
+
+      // Show success message
+      const platformText = platforms.join(' and ');
+      showPopup('Sync Successful', `Successfully synced data from ${platformText}!`, 'success');
     } catch (err) {
-      alert("Sync failed. Check your handles in settings.");
+      showPopup('Sync Failed', "Please check:\n1. Your internet connection\n2. Your usernames in Settings are correct\n3. The backend server is running", 'error');
     }
     setLoading(false);
   };
@@ -201,7 +265,7 @@ function App() {
   const cfCount = problems.filter(p => p.platform === 'Codeforces').length;
   const lcCount = problems.filter(p => p.platform === 'LeetCode').length;
   const peakRating = problems.length > 0 ? Math.max(...problems.map(p => parseInt(p.difficulty) || 0)) : 0;
-  
+
   const totalPages = Math.ceil(problems.length / itemsPerPage);
   const currentItems = problems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
@@ -214,7 +278,7 @@ function App() {
       let today = new Date(); today.setHours(0, 0, 0, 0);
       if (Math.floor((today - dates[0]) / 86400000) > 1) return 0;
       for (let i = 0; i < dates.length; i++) {
-        if (i === 0 || Math.floor((dates[i-1] - dates[i]) / 86400000) === 1) streak++;
+        if (i === 0 || Math.floor((dates[i - 1] - dates[i]) / 86400000) === 1) streak++;
         else break;
       }
       return streak;
@@ -237,16 +301,16 @@ function App() {
             {!isLoginView && (
               <div className="relative">
                 <UserIcon className="absolute left-3 top-3 text-gray-500" size={18} />
-                <input type="text" placeholder="Username" required className="w-full bg-[#0B0E14] border border-gray-800 rounded-lg py-2.5 pl-10 pr-4 focus:border-emerald-500 outline-none text-sm" onChange={(e) => setAuthForm({...authForm, username: e.target.value})}/>
+                <input type="text" placeholder="Username" required className="w-full bg-[#0B0E14] border border-gray-800 rounded-lg py-2.5 pl-10 pr-4 focus:border-emerald-500 outline-none text-sm" onChange={(e) => setAuthForm({ ...authForm, username: e.target.value })} />
               </div>
             )}
             <div className="relative">
               <Mail className="absolute left-3 top-3 text-gray-500" size={18} />
-              <input type="email" placeholder="Email Address" required className="w-full bg-[#0B0E14] border border-gray-800 rounded-lg py-2.5 pl-10 pr-4 focus:border-emerald-500 outline-none text-sm" onChange={(e) => setAuthForm({...authForm, email: e.target.value})}/>
+              <input type="email" placeholder="Email Address" required className="w-full bg-[#0B0E14] border border-gray-800 rounded-lg py-2.5 pl-10 pr-4 focus:border-emerald-500 outline-none text-sm" onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} />
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-3 text-gray-500" size={18} />
-              <input type="password" placeholder="Password" required className="w-full bg-[#0B0E14] border border-gray-800 rounded-lg py-2.5 pl-10 pr-4 focus:border-emerald-500 outline-none text-sm" onChange={(e) => setAuthForm({...authForm, password: e.target.value})}/>
+              <input type="password" placeholder="Password" required className="w-full bg-[#0B0E14] border border-gray-800 rounded-lg py-2.5 pl-10 pr-4 focus:border-emerald-500 outline-none text-sm" onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })} />
             </div>
             <button className="w-full bg-emerald-500 text-black font-bold py-2.5 rounded-lg hover:bg-emerald-400 transition-colors mt-2">
               {loading ? 'Processing...' : (isLoginView ? 'Sign In' : 'Sign Up')}
@@ -256,6 +320,7 @@ function App() {
             {isLoginView ? "Don't have an account? Create one" : "Already have an account? Sign in"}
           </p>
         </div>
+        <Popup isOpen={popup.isOpen} onClose={closePopup} title={popup.title} message={popup.message} type={popup.type} />
       </div>
     );
   }
@@ -263,7 +328,7 @@ function App() {
   // --- MAIN DASHBOARD VIEW ---
   return (
     <div className="flex h-screen bg-[#0B0E14] text-gray-300 font-sans overflow-hidden">
-      
+
       {/* SIDEBAR */}
       <aside className="w-64 bg-[#0B0E14] border-r border-gray-800 flex flex-col p-6">
         <div className="flex items-center gap-2 mb-10">
@@ -274,14 +339,14 @@ function App() {
         </div>
 
         <nav className="flex-1 space-y-2">
-          <SidebarItem icon={<LayoutDashboard size={20}/>} label="Dashboard" active={activeTab === 'Home'} onClick={() => setActiveTab('Home')} />
-          <SidebarItem icon={<Activity size={20}/>} label="DSA Tracker" active={activeTab === 'Tracker'} onClick={() => setActiveTab('Tracker')} />
-          <SidebarItem icon={<BarChart3 size={20}/>} label="Analytics" active={activeTab === 'Analytics'} onClick={() => setActiveTab('Analytics')} />
-          <SidebarItem icon={<BookOpen size={20}/>} label="Notes" active={activeTab === 'Notes'} onClick={() => setActiveTab('Notes')} />
+          <SidebarItem icon={<LayoutDashboard size={20} />} label="Dashboard" active={activeTab === 'Home'} onClick={() => setActiveTab('Home')} />
+          <SidebarItem icon={<Activity size={20} />} label="DSA Tracker" active={activeTab === 'Tracker'} onClick={() => setActiveTab('Tracker')} />
+          <SidebarItem icon={<BarChart3 size={20} />} label="Analytics" active={activeTab === 'Analytics'} onClick={() => setActiveTab('Analytics')} />
+          <SidebarItem icon={<BookOpen size={20} />} label="Notes" active={activeTab === 'Notes'} onClick={() => setActiveTab('Notes')} />
         </nav>
 
         <div className="pt-6 border-t border-gray-800 space-y-4">
-          <SidebarItem icon={<Settings size={20}/>} label="Settings" active={activeTab === 'Settings'} onClick={() => setActiveTab('Settings')} />
+          <SidebarItem icon={<Settings size={20} />} label="Settings" active={activeTab === 'Settings'} onClick={() => setActiveTab('Settings')} />
           <div className="flex items-center justify-between mt-4 bg-white/5 p-3 rounded-xl border border-white/5">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-black text-xs font-bold">
@@ -317,13 +382,13 @@ function App() {
             <div className="space-y-8">
               <div className="grid grid-cols-3 gap-6">
                 <StatCard title="TOTAL SOLVED" value={totalSolved} subtext="Keep it up!" subColor="text-emerald-400">
-                  <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500"><CheckCircle2 size={20}/></div>
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500"><CheckCircle2 size={20} /></div>
                 </StatCard>
                 <StatCard title="CURRENT STREAK" value={`${calculateStreak(problems)} Days`} subtext="Flame on" subColor="text-orange-500">
-                  <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-500"><Flame size={20}/></div>
+                  <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-500"><Flame size={20} /></div>
                 </StatCard>
                 <StatCard title="REVIEW NEEDED" value={reviewNeeded} subtext="Critical issues" subColor="text-yellow-400">
-                  <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center text-yellow-500"><AlertCircle size={20}/></div>
+                  <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center text-yellow-500"><AlertCircle size={20} /></div>
                 </StatCard>
               </div>
 
@@ -334,7 +399,7 @@ function App() {
                     {currentItems.map(p => (
                       <div key={p.problemId} className="flex items-center justify-between p-3 bg-[#0B0E14] rounded-lg border border-gray-800 hover:border-emerald-500/20 transition">
                         <div className="flex items-center gap-3">
-                          <Code size={16} className="text-emerald-500"/>
+                          <Code size={16} className="text-emerald-500" />
                           <span className="text-sm font-medium text-white">{p.title}</span>
                         </div>
                         <span className={`text-[10px] font-bold px-2 py-1 rounded ${getDifficultyColor(p.difficulty)}`}>{p.difficulty}</span>
@@ -345,8 +410,8 @@ function App() {
                 <div className="bg-[#151B26] rounded-xl border border-gray-800 p-6">
                   <h3 className="text-white font-semibold mb-6">Skill Breakdown</h3>
                   <div className="space-y-5">
-                    <SkillBar label="Codeforces" pct={`${Math.min(Math.round((cfCount/100)*100), 100)}%`} />
-                    <SkillBar label="LeetCode" pct={`${Math.min(Math.round((lcCount/100)*100), 100)}%`} />
+                    <SkillBar label="Codeforces" pct={`${Math.min(Math.round((cfCount / 100) * 100), 100)}%`} />
+                    <SkillBar label="LeetCode" pct={`${Math.min(Math.round((lcCount / 100) * 100), 100)}%`} />
                     <SkillBar label="Accuracy" pct="85%" />
                   </div>
                 </div>
@@ -360,6 +425,7 @@ function App() {
           {activeTab === 'Settings' && <SettingsView userSettings={userSettings} setUserSettings={setUserSettings} token={token} />}
         </div>
       </main>
+      <Popup isOpen={popup.isOpen} onClose={closePopup} title={popup.title} message={popup.message} type={popup.type} />
     </div>
   );
 }
@@ -407,62 +473,62 @@ function getDifficultyColor(rating) {
 function TrackerView({ problems, lastSyncTime }) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
-  
+
   const safeProblems = Array.isArray(problems) ? problems : [];
   const totalPages = Math.ceil(safeProblems.length / itemsPerPage);
   const currentItems = safeProblems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  
+
   const totalSolved = safeProblems.length;
   const reviewNeeded = safeProblems.filter(p => p && p.status === 'Review').length;
-  
+
   // Calculate real daily streak from problem dates
   const calculateRealStreak = () => {
     if (safeProblems.length === 0) return 0;
-    
+
     const dates = safeProblems
       .map(p => new Date(p.createdAt || p.lastUpdated || Date.now()))
       .map(d => d.toDateString())
       .filter((date, index, arr) => arr.indexOf(date) === index)
       .sort((a, b) => new Date(b) - new Date(a));
-    
+
     let streak = 0;
     const today = new Date().toDateString();
-    
+
     for (let i = 0; i < dates.length; i++) {
       const currentDate = new Date(dates[i]);
       const expectedDate = new Date();
       expectedDate.setDate(expectedDate.getDate() - i);
-      
+
       if (currentDate.toDateString() === expectedDate.toDateString()) {
         streak++;
       } else {
         break;
       }
     }
-    
+
     return streak;
   };
-  
+
   const dailyStreak = calculateRealStreak();
-  
+
   // Get last sync time - use passed lastSyncTime or fallback to most recent problem
   const getLastSyncTime = () => {
-    const syncTime = lastSyncTime || (safeProblems.length > 0 ? 
+    const syncTime = lastSyncTime || (safeProblems.length > 0 ?
       safeProblems.reduce((latest, current) => {
         const latestDate = new Date(latest.createdAt || latest.lastUpdated || 0);
         const currentDate = new Date(current.createdAt || current.lastUpdated || 0);
         return currentDate > latestDate ? current : latest;
       }) : null);
-    
+
     if (!syncTime) return 'Never';
-    
+
     const syncDate = lastSyncTime || new Date(syncTime.createdAt || syncTime.lastUpdated);
     const now = new Date();
     const diffMs = now - syncDate;
     const diffMins = Math.floor(diffMs / (1000 * 60));
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
+
     if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
@@ -493,7 +559,7 @@ function TrackerView({ problems, lastSyncTime }) {
           <div className="text-3xl font-bold text-white mb-1">{totalSolved}</div>
           <div className="text-xs text-emerald-400 font-medium">+{Math.floor(totalSolved * 0.1)} this week</div>
         </div>
-        
+
         <div className="bg-[#151B26] p-6 rounded-xl border border-gray-800">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Review Needed</span>
@@ -502,7 +568,7 @@ function TrackerView({ problems, lastSyncTime }) {
           <div className="text-3xl font-bold text-white mb-1">{reviewNeeded}</div>
           <div className="text-xs text-gray-400">{Math.floor(reviewNeeded * 0.3)} critical issues</div>
         </div>
-        
+
         <div className="bg-[#151B26] p-6 rounded-xl border border-gray-800">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Daily Streak</span>
@@ -521,7 +587,7 @@ function TrackerView({ problems, lastSyncTime }) {
           <div>Status</div>
           <div>Last Solved</div>
         </div>
-        
+
         {currentItems.length > 0 ? currentItems.map((problem, idx) => (
           <div key={idx} className="grid grid-cols-5 gap-4 p-4 border-b border-gray-800/50 hover:bg-gray-800/20">
             <div className="text-white font-medium">{problem?.title || 'Problem'}</div>
@@ -530,12 +596,11 @@ function TrackerView({ problems, lastSyncTime }) {
               <span className="text-sm">{problem?.platform || 'Platform'}</span>
             </div>
             <div>
-              <span className={`text-xs px-2 py-1 rounded font-bold ${
-                problem?.difficulty === 'Easy' ? 'bg-emerald-500/10 text-emerald-400' :
+              <span className={`text-xs px-2 py-1 rounded font-bold ${problem?.difficulty === 'Easy' ? 'bg-emerald-500/10 text-emerald-400' :
                 problem?.difficulty === 'Medium' ? 'bg-yellow-500/10 text-yellow-400' :
-                problem?.difficulty === 'Hard' ? 'bg-red-500/10 text-red-400' :
-                'bg-gray-500/10 text-gray-400'
-              }`}>
+                  problem?.difficulty === 'Hard' ? 'bg-red-500/10 text-red-400' :
+                    'bg-gray-500/10 text-gray-400'
+                }`}>
                 {problem?.difficulty || 'Unknown'}
               </span>
             </div>
@@ -545,7 +610,7 @@ function TrackerView({ problems, lastSyncTime }) {
               </span>
             </div>
             <div className="text-sm text-gray-400">
-              {problem?.createdAt ? 
+              {problem?.createdAt ?
                 (() => {
                   const date = new Date(problem.createdAt);
                   const now = new Date();
@@ -553,12 +618,12 @@ function TrackerView({ problems, lastSyncTime }) {
                   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
                   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
                   const diffMins = Math.floor(diffMs / (1000 * 60));
-                  
+
                   if (diffMins < 60) return `${diffMins}m ago`;
                   if (diffHours < 24) return `${diffHours}h ago`;
                   if (diffDays < 30) return `${diffDays}d ago`;
                   return date.toLocaleDateString();
-                })() : 
+                })() :
                 'Unknown'
               }
             </div>
@@ -568,19 +633,19 @@ function TrackerView({ problems, lastSyncTime }) {
             <p>No problems found. Sync your accounts to get started!</p>
           </div>
         )}
-        
+
         {safeProblems.length > 0 && totalPages > 1 && (
           <div className="flex items-center justify-between p-4">
             <div className="text-sm text-gray-400">Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, safeProblems.length)} of {safeProblems.length} problems</div>
             <div className="flex gap-2">
-              <button 
+              <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
                 className="px-3 py-1 bg-gray-800 text-gray-400 rounded hover:bg-gray-700 disabled:opacity-50"
               >
                 Previous
               </button>
-              <button 
+              <button
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
                 className="px-3 py-1 bg-gray-800 text-gray-400 rounded hover:bg-gray-700 disabled:opacity-50"
@@ -598,7 +663,7 @@ function TrackerView({ problems, lastSyncTime }) {
 // --- ANALYTICS VIEW ---
 function AnalyticsView({ problems, analytics }) {
   const safeProblems = Array.isArray(problems) ? problems : [];
-  
+
   const globalRank = 1245;
   const currentStreak = safeProblems.length > 0 ? Math.min(safeProblems.length, 30) : 14;
   const totalProblems = safeProblems.length;
@@ -609,7 +674,7 @@ function AnalyticsView({ problems, analytics }) {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-white">Analytics</h1>
-      
+
       <div className="grid grid-cols-4 gap-6">
         <div className="bg-[#151B26] p-6 rounded-xl border border-gray-800">
           <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Global Rank</div>
@@ -618,7 +683,7 @@ function AnalyticsView({ problems, analytics }) {
             <TrendingUp size={12} /> 12%
           </div>
         </div>
-        
+
         <div className="bg-[#151B26] p-6 rounded-xl border border-gray-800">
           <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Current Streak</div>
           <div className="text-3xl font-bold text-white mb-1">{currentStreak} Days</div>
@@ -626,7 +691,7 @@ function AnalyticsView({ problems, analytics }) {
             <TrendingUp size={12} /> 2%
           </div>
         </div>
-        
+
         <div className="bg-[#151B26] p-6 rounded-xl border border-gray-800">
           <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Total Problems</div>
           <div className="text-3xl font-bold text-white mb-1">{totalProblems}</div>
@@ -634,7 +699,7 @@ function AnalyticsView({ problems, analytics }) {
             <TrendingUp size={12} /> 5%
           </div>
         </div>
-        
+
         <div className="bg-[#151B26] p-6 rounded-xl border border-gray-800">
           <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Accuracy</div>
           <div className="text-3xl font-bold text-white mb-1">{accuracy}%</div>
@@ -661,7 +726,7 @@ function AnalyticsView({ problems, analytics }) {
             <span className="text-gray-500 text-sm">Chart visualization</span>
           </div>
         </div>
-        
+
         <div className="bg-[#151B26] p-6 rounded-xl border border-gray-800">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-white font-semibold">Problems Solved per Week</h3>
@@ -730,7 +795,7 @@ function AnalyticsView({ problems, analytics }) {
 function NotesView({ notes }) {
   const [selectedNote, setSelectedNote] = useState('Dijkstra\'s Algorithm');
   const safeNotes = notes || [];
-  
+
   // Generate dynamic content based on actual notes or use template
   const noteContent = safeNotes.length > 0 ? {
     title: safeNotes[0].title || 'Algorithm Note',
@@ -754,14 +819,14 @@ function NotesView({ notes }) {
           <h2 className="text-white font-bold text-lg mb-2">Cheat Sheets</h2>
           <div className="relative">
             <Search className="absolute left-3 top-2.5 text-gray-500" size={16} />
-            <input 
-              type="text" 
-              placeholder="Search notes..." 
-              className="w-full bg-[#151B26] text-sm pl-10 pr-4 py-2 rounded-lg border border-gray-800 focus:outline-none focus:border-emerald-500" 
+            <input
+              type="text"
+              placeholder="Search notes..."
+              className="w-full bg-[#151B26] text-sm pl-10 pr-4 py-2 rounded-lg border border-gray-800 focus:outline-none focus:border-emerald-500"
             />
           </div>
         </div>
-        
+
         <div className="mb-8">
           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Library</h3>
           <div className="space-y-2">
@@ -779,15 +844,15 @@ function NotesView({ notes }) {
             ))}
           </div>
         </div>
-        
+
         {/* Dynamic Notes List */}
         {safeNotes.length > 0 && (
           <div className="mb-8">
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Your Notes ({safeNotes.length})</h3>
             <div className="space-y-2">
               {safeNotes.slice(0, 5).map((note, idx) => (
-                <div 
-                  key={idx} 
+                <div
+                  key={idx}
                   onClick={() => setSelectedNote(note.title || note.name || `Note ${idx + 1}`)}
                   className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-gray-400 hover:text-white hover:bg-gray-800"
                 >
@@ -798,7 +863,7 @@ function NotesView({ notes }) {
             </div>
           </div>
         )}
-        
+
         <div className="mb-8">
           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Recent Items</h3>
           <div className="space-y-2">
@@ -812,7 +877,7 @@ function NotesView({ notes }) {
             )}
           </div>
         </div>
-        
+
         <div className="mt-auto">
           <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 mb-4">
             <div className="flex items-center gap-2 mb-2">
@@ -826,7 +891,7 @@ function NotesView({ notes }) {
           </button>
         </div>
       </div>
-      
+
       {/* Main Content */}
       <div className="flex-1 flex">
         <div className="flex-1 flex flex-col">
@@ -861,23 +926,22 @@ function NotesView({ notes }) {
               </div>
             </div>
           </div>
-          
+
           {/* Tabs */}
           <div className="border-b border-gray-800 px-6">
             <div className="flex gap-6">
               {['Explanation', 'Code Implementation', 'Complexity'].map((tab) => (
-                <button 
+                <button
                   key={tab}
-                  className={`py-3 px-1 text-sm font-medium border-b-2 transition ${
-                    tab === 'Explanation' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-gray-400 hover:text-white'
-                  }`}
+                  className={`py-3 px-1 text-sm font-medium border-b-2 transition ${tab === 'Explanation' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-gray-400 hover:text-white'
+                    }`}
                 >
                   {tab}
                 </button>
               ))}
             </div>
           </div>
-          
+
           {/* Content */}
           <div className="flex-1 p-6 overflow-y-auto">
             <div className="max-w-4xl">
@@ -885,18 +949,18 @@ function NotesView({ notes }) {
                 <p className="text-gray-300 leading-relaxed mb-6">
                   {noteContent.explanation}
                 </p>
-                
+
                 <div className="bg-[#151B26] border border-gray-800 rounded-lg p-6 mb-6">
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-1 h-6 bg-emerald-500 rounded"></div>
                     <h3 className="text-xl font-bold text-white">Algorithm Overview</h3>
                   </div>
                   <p className="text-gray-300 leading-relaxed">
-                    {safeNotes.length > 0 && safeNotes[0].overview ? safeNotes[0].overview : 
-                    "The algorithm maintains a set of visited nodes and a set of unvisited nodes. It starts at a defined source node and repeatedly selects the unvisited node with the smallest distance."}
+                    {safeNotes.length > 0 && safeNotes[0].overview ? safeNotes[0].overview :
+                      "The algorithm maintains a set of visited nodes and a set of unvisited nodes. It starts at a defined source node and repeatedly selects the unvisited node with the smallest distance."}
                   </p>
                 </div>
-                
+
                 <div className="bg-[#151B26] border border-gray-800 rounded-lg p-6">
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-1 h-6 bg-emerald-500 rounded"></div>
@@ -914,20 +978,19 @@ function NotesView({ notes }) {
             </div>
           </div>
         </div>
-        
+
         {/* Right Sidebar */}
         <div className="w-64 border-l border-gray-800 p-6">
           <h3 className="text-white font-semibold mb-4">On This Page</h3>
           <div className="space-y-2 text-sm">
             {['Overview', 'Algorithm Flow', 'Complexity Analysis', 'Implementation'].map((item, idx) => (
-              <div key={item} className={`cursor-pointer py-1 ${
-                idx === 0 ? 'text-emerald-400 border-l-2 border-emerald-500 pl-3' : 'text-gray-400 hover:text-white pl-3'
-              }`}>
+              <div key={item} className={`cursor-pointer py-1 ${idx === 0 ? 'text-emerald-400 border-l-2 border-emerald-500 pl-3' : 'text-gray-400 hover:text-white pl-3'
+                }`}>
                 {item}
               </div>
             ))}
           </div>
-          
+
           <div className="mt-8">
             <h4 className="text-white font-semibold mb-4">Helpful resources</h4>
             <div className="space-y-3">
@@ -940,7 +1003,7 @@ function NotesView({ notes }) {
                 <span>LeetCode 743</span>
               </div>
             </div>
-            
+
             {noteContent.tags.length > 0 && (
               <div className="mt-6">
                 <h5 className="text-white font-medium mb-2 text-sm">Tags</h5>
@@ -973,6 +1036,8 @@ function SettingsView({ userSettings, setUserSettings, token }) {
 
   const handleSave = async () => {
     setLoading(true);
+    setMessage('');
+
     try {
       const res = await fetch('http://localhost:5000/api/auth/profile', {
         method: 'PUT',
@@ -987,29 +1052,30 @@ function SettingsView({ userSettings, setUserSettings, token }) {
           }
         })
       });
-      
+
       if (res.ok) {
         setUserSettings(formData);
-        setMessage('Settings saved successfully! Syncing your data...');
-        
+        setMessage('✓ Settings saved successfully! Your handles are now configured.');
+
         // Auto-sync user's data after saving handles
         setTimeout(async () => {
           try {
+            setMessage('🔄 Syncing your data from saved handles...');
             const syncPromises = [];
-            
+
             if (formData.codeforcesHandle) {
               syncPromises.push(
-                fetch('http://localhost:5000/api/sync/codeforces', { 
-                  headers: { 'Authorization': `Bearer ${token}` } 
+                fetch('http://localhost:5000/api/sync/codeforces', {
+                  headers: { 'Authorization': `Bearer ${token}` }
                 })
               );
             }
-            
+
             if (formData.leetcodeHandle) {
               syncPromises.push(
-                fetch('http://localhost:5000/api/sync/leetcode', { 
+                fetch('http://localhost:5000/api/sync/leetcode', {
                   method: 'POST',
-                  headers: { 
+                  headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                   },
@@ -1017,32 +1083,34 @@ function SettingsView({ userSettings, setUserSettings, token }) {
                 })
               );
             }
-            
+
             await Promise.all(syncPromises);
-            
+
             // Fetch the synced data
-            const problemsRes = await fetch(`http://localhost:5000/api/sync/all`, { 
-              headers: { 'Authorization': `Bearer ${token}` } 
+            const problemsRes = await fetch(`http://localhost:5000/api/sync/all`, {
+              headers: { 'Authorization': `Bearer ${token}` }
             });
             const problemsData = await problemsRes.json();
-            
+
             // Update parent component with new data
-            window.dispatchEvent(new CustomEvent('dataUpdated', { 
+            window.dispatchEvent(new CustomEvent('dataUpdated', {
               detail: { problems: Array.isArray(problemsData) ? problemsData : [] }
             }));
-            
-            setMessage('Data synced successfully!');
-            setTimeout(() => setMessage(''), 3000);
+
+            setMessage('✓ Data synced successfully! You can now view your problems in the Dashboard.');
+            setTimeout(() => setMessage(''), 5000);
           } catch (err) {
-            setMessage('Sync failed. Please try manual sync.');
-            setTimeout(() => setMessage(''), 3000);
+            setMessage('⚠ Settings saved but sync failed. Please use the "Sync Now" button in the header.');
+            setTimeout(() => setMessage(''), 5000);
           }
         }, 1000);
       } else {
-        setMessage('Failed to save settings');
+        setMessage('✗ Failed to save settings. Please try again.');
+        setTimeout(() => setMessage(''), 3000);
       }
     } catch (err) {
-      setMessage('Error saving settings');
+      setMessage('✗ Error saving settings. Please check your connection.');
+      setTimeout(() => setMessage(''), 3000);
     }
     setLoading(false);
   };
@@ -1052,10 +1120,9 @@ function SettingsView({ userSettings, setUserSettings, token }) {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">Settings</h1>
         {message && (
-          <div className={`px-4 py-2 rounded-lg text-sm font-medium ${
-            message.includes('success') ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+          <div className={`px-4 py-2 rounded-lg text-sm font-medium ${message.includes('success') ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
             'bg-red-500/10 text-red-400 border border-red-500/20'
-          }`}>
+            }`}>
             {message}
           </div>
         )}
@@ -1064,20 +1131,20 @@ function SettingsView({ userSettings, setUserSettings, token }) {
       <div className="bg-[#151B26] rounded-xl border border-gray-800 p-6">
         <h2 className="text-lg font-semibold text-white mb-6">Platform Handles</h2>
         <p className="text-gray-400 text-sm mb-6">
-          Connect your coding platform accounts to sync your solved problems automatically.
+          Add your LeetCode and Codeforces usernames below. After saving, you can sync your solved problems using the "Sync Now" button in the header.
         </p>
-        
+
         <div className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              LeetCode Handle
+              LeetCode Username
             </label>
             <div className="relative">
               <Code className="absolute left-3 top-3 text-gray-500" size={18} />
               <input
                 type="text"
                 value={formData.leetcodeHandle}
-                onChange={(e) => setFormData({...formData, leetcodeHandle: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, leetcodeHandle: e.target.value })}
                 placeholder="Enter your LeetCode username"
                 className="w-full bg-[#0B0E14] border border-gray-800 rounded-lg py-3 pl-10 pr-4 text-white focus:border-emerald-500 focus:outline-none"
               />
@@ -1089,14 +1156,14 @@ function SettingsView({ userSettings, setUserSettings, token }) {
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Codeforces Handle
+              Codeforces Username
             </label>
             <div className="relative">
               <Code className="absolute left-3 top-3 text-gray-500" size={18} />
               <input
                 type="text"
                 value={formData.codeforcesHandle}
-                onChange={(e) => setFormData({...formData, codeforcesHandle: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, codeforcesHandle: e.target.value })}
                 placeholder="Enter your Codeforces handle"
                 className="w-full bg-[#0B0E14] border border-gray-800 rounded-lg py-3 pl-10 pr-4 text-white focus:border-emerald-500 focus:outline-none"
               />
@@ -1109,18 +1176,17 @@ function SettingsView({ userSettings, setUserSettings, token }) {
 
         <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-800">
           <div className="text-sm text-gray-400">
-            Changes will be saved to your profile and used for automatic syncing.
+            Click "Save Changes" to store your handles and automatically sync your data.
           </div>
           <button
             onClick={handleSave}
-            disabled={loading}
-            className={`px-6 py-2 rounded-lg font-semibold transition ${
-              loading 
-                ? 'bg-gray-700 text-gray-400 cursor-not-allowed' 
-                : 'bg-emerald-500 text-black hover:bg-emerald-400'
-            }`}
+            disabled={loading || (!formData.leetcodeHandle && !formData.codeforcesHandle)}
+            className={`px-6 py-2 rounded-lg font-semibold transition ${loading || (!formData.leetcodeHandle && !formData.codeforcesHandle)
+              ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+              : 'bg-emerald-500 text-black hover:bg-emerald-400'
+              }`}
           >
-            {loading ? 'Saving...' : 'Save Changes'}
+            {loading ? 'Saving & Syncing...' : 'Save Changes'}
           </button>
         </div>
       </div>
@@ -1130,9 +1196,8 @@ function SettingsView({ userSettings, setUserSettings, token }) {
         <div className="space-y-4">
           <div className="flex items-center justify-between p-4 bg-[#0B0E14] rounded-lg border border-gray-800">
             <div className="flex items-center gap-3">
-              <div className={`w-3 h-3 rounded-full ${
-                formData.leetcodeHandle ? 'bg-emerald-400' : 'bg-gray-600'
-              }`}></div>
+              <div className={`w-3 h-3 rounded-full ${formData.leetcodeHandle ? 'bg-emerald-400' : 'bg-gray-600'
+                }`}></div>
               <div>
                 <div className="text-white font-medium">LeetCode</div>
                 <div className="text-sm text-gray-400">
@@ -1147,9 +1212,8 @@ function SettingsView({ userSettings, setUserSettings, token }) {
 
           <div className="flex items-center justify-between p-4 bg-[#0B0E14] rounded-lg border border-gray-800">
             <div className="flex items-center gap-3">
-              <div className={`w-3 h-3 rounded-full ${
-                formData.codeforcesHandle ? 'bg-emerald-400' : 'bg-gray-600'
-              }`}></div>
+              <div className={`w-3 h-3 rounded-full ${formData.codeforcesHandle ? 'bg-emerald-400' : 'bg-gray-600'
+                }`}></div>
               <div>
                 <div className="text-white font-medium">Codeforces</div>
                 <div className="text-sm text-gray-400">
@@ -1170,22 +1234,29 @@ function SettingsView({ userSettings, setUserSettings, token }) {
           <div className="flex items-start gap-3">
             <div className="w-6 h-6 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400 text-xs font-bold mt-0.5">1</div>
             <div>
-              <div className="text-white font-medium mb-1">Add Your Handles</div>
-              <div>Enter your LeetCode and Codeforces usernames in the fields above.</div>
+              <div className="text-white font-medium mb-1">Add Your Usernames</div>
+              <div>Enter your LeetCode and/or Codeforces usernames in the fields above.</div>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <div className="w-6 h-6 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400 text-xs font-bold mt-0.5">2</div>
             <div>
-              <div className="text-white font-medium mb-1">Automatic Sync</div>
-              <div>Click "Sync Now" in the header to fetch your latest solved problems.</div>
+              <div className="text-white font-medium mb-1">Save Your Settings</div>
+              <div>Click "Save Changes" to store your usernames. The system will automatically sync your data.</div>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <div className="w-6 h-6 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400 text-xs font-bold mt-0.5">3</div>
             <div>
-              <div className="text-white font-medium mb-1">Track Progress</div>
-              <div>View your progress in the Dashboard and Analytics sections.</div>
+              <div className="text-white font-medium mb-1">Sync Anytime</div>
+              <div>Use the "Sync Now" button in the header to fetch your latest solved problems from the saved usernames.</div>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400 text-xs font-bold mt-0.5">4</div>
+            <div>
+              <div className="text-white font-medium mb-1">Track Your Progress</div>
+              <div>View your synced problems and analytics in the Dashboard and DSA Tracker sections.</div>
             </div>
           </div>
         </div>
