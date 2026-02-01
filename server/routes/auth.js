@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs'); 
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const auth = require('../middleware/auth');
 
 router.post('/register', async (req, res) => {
     try {
@@ -57,6 +58,47 @@ router.post('/login', async (req, res) => {
     });
   } catch (err) {
     console.error("Login Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get user profile
+router.get('/profile', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) return res.status(404).json({ msg: 'User not found' });
+    
+    res.json({
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      handles: user.handles || { leetcode: '', codeforces: '' }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update user profile
+router.put('/profile', auth, async (req, res) => {
+  try {
+    const { handles } = req.body;
+    
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { handles },
+      { new: true }
+    ).select('-password');
+    
+    if (!user) return res.status(404).json({ msg: 'User not found' });
+    
+    res.json({
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      handles: user.handles || { leetcode: '', codeforces: '' }
+    });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

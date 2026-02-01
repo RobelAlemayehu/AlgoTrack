@@ -5,6 +5,7 @@ const connectDB = require('./config/db');
 const syncRoutes = require('./routes/syncRoutes')
 const authRoutes = require('./routes/auth');
 const user = require('./models/User')
+const noteRoutes = require('./routes/noteRoutes')
 
 dotenv.config();
 connectDB()
@@ -16,6 +17,7 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/sync', syncRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/notes', noteRoutes);
 
 app.get('/', (req, res) => {
     res.end('AlgoTrack API is running....');

@@ -3,10 +3,11 @@ const router = express.Router();
 
 const { syncCodeforces,getProblems } = require('../controller/codeforcesController');
 const { syncLeetCode } = require('../controller/leetCodeController');
+const auth = require('../middleware/auth')
 
 
 router.get('/codeforces', syncCodeforces);
-router.get('/leetcode', syncLeetCode);
+router.post('/leetcode',auth, syncLeetCode);
 router.get('/all', getProblems)
 
 

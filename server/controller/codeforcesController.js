@@ -6,16 +6,13 @@ const User = require('../models/User');
 const syncCodeforces = async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
-        const handle = user.codeforceHandle
+        const handle = user.handles?.codeforces;
 
         if(!handle){
-            return res.staus(400).json({ msg: "Please set your Codeforce handle in setting first!"});
+            return res.status(400).json({ msg: "Please set your Codeforces handle in settings first!"});
         }
 
         const response = await axios.get(`https://codeforces.com/api/user.status?handle=${handle}`);
-
-
-      
         const submissions = response.data.result;
 
         const uniqueSolved = new Map();
@@ -25,6 +22,7 @@ const syncCodeforces = async (req, res) => {
                 const id = `CF-${sub.problem.contestId}${sub.problem.index}`;
                 if (!uniqueSolved.has(id)) {
                     uniqueSolved.set(id, {
+                        userId: req.user.id,
                         problemId: id,
                         title: sub.problem.name,
                         platform: 'Codeforces',
@@ -39,7 +37,7 @@ const syncCodeforces = async (req, res) => {
 
         const ops = finalData.map(prob => ({
             updateOne: {
-                filter: { problemId: prob.problemId },
+                filter: { problemId: prob.problemId, userId: req.user.id },
                 update: { $set: prob },
                 upsert: true
             }
@@ -55,11 +53,8 @@ const syncCodeforces = async (req, res) => {
 
 const getProblems = async (req, res) => {
     try{
-        const problems = await Problem.find().sort('-createdAt' );
-
+        const problems = await Problem.find({ userId: req.user.id }).sort('-createdAt');
         res.status(200).json(problems);
-
-
     }catch (error){
         res.status(500).json({ message: "Failed to fetch problems", error: error.message })
     }
