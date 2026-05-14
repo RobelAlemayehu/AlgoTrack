@@ -67,12 +67,16 @@ router.get('/profile', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
     if (!user) return res.status(404).json({ msg: 'User not found' });
-    
     res.json({
       id: user._id,
       username: user.username,
       email: user.email,
-      handles: user.handles || { leetcode: '', codeforces: '' }
+      handles:    user.handles    || { leetcode: '', codeforces: '' },
+      lcStats:    user.lcStats    || {},
+      lcCalendar: user.lcCalendar || {},
+      cfRating:   user.cfRating   || 0,
+      cfMaxRating:user.cfMaxRating|| 0,
+      cfRank:     user.cfRank     || ''
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
