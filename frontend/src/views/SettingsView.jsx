@@ -42,13 +42,13 @@ export default function SettingsView({ userSettings, setUserSettings, token, sho
       const hasChanged = oldSettings.leetcodeHandle !== form.leetcodeHandle || oldSettings.codeforcesHandle !== form.codeforcesHandle;
 
       if (!hasChanged) {
-        setStatus({ type: 'success', msg: '✓ Settings saved — no changes detected.' });
+        setStatus({ type: 'success', msg: 'Settings saved — no changes detected.' });
         setLoading(false);
         return;
       }
 
       // Reset old data
-      setStatus({ type: 'info', msg: '🔄 Resetting old data…' });
+      setStatus({ type: 'info', msg: 'Resetting old data...' });
       try {
         await fetch('http://localhost:5000/api/sync/reset', {
           method: 'DELETE',
@@ -63,7 +63,7 @@ export default function SettingsView({ userSettings, setUserSettings, token, sho
       const successes = [];
 
       if (form.codeforcesHandle) {
-        setStatus({ type: 'info', msg: '🔄 Syncing Codeforces…' });
+        setStatus({ type: 'info', msg: 'Syncing Codeforces...' });
         try {
           const r = await fetch(`http://localhost:5000/api/sync/codeforces?handle=${form.codeforcesHandle}`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -74,7 +74,7 @@ export default function SettingsView({ userSettings, setUserSettings, token, sho
       }
 
       if (form.leetcodeHandle) {
-        setStatus({ type: 'info', msg: '🔄 Syncing LeetCode…' });
+        setStatus({ type: 'info', msg: 'Syncing LeetCode...' });
         try {
           const r = await fetch('http://localhost:5000/api/sync/leetcode', {
             method: 'POST',
@@ -99,17 +99,17 @@ export default function SettingsView({ userSettings, setUserSettings, token, sho
       } }));
 
       if (errors.length > 0 && successes.length === 0) {
-        setStatus({ type: 'error', msg: `✗ ${errors.join(' · ')}` });
+        setStatus({ type: 'error', msg: `Sync Failed: ${errors.join(' · ')}` });
         showPopup?.('Sync Failed', errors.join('\n'), 'error');
       } else if (errors.length > 0) {
-        setStatus({ type: 'error', msg: `⚠ Partial sync: ${successes.join(', ')} synced. Errors: ${errors.join(', ')}` });
+        setStatus({ type: 'error', msg: `Partial sync: ${successes.join(', ')} synced. Errors: ${errors.join(', ')}` });
         showPopup?.('Partial Sync', `Synced: ${successes.join(', ')}\nErrors: ${errors.join(', ')}`, 'warning');
       } else {
-        setStatus({ type: 'success', msg: `✓ Successfully synced: ${successes.join(', ')}` });
+        setStatus({ type: 'success', msg: `Successfully synced: ${successes.join(', ')}` });
         showPopup?.('Sync Complete!', `Synced: ${successes.join(', ')}`, 'success');
       }
     } catch (err) {
-      setStatus({ type: 'error', msg: `✗ Error: ${err.message}` });
+      setStatus({ type: 'error', msg: `Error: ${err.message}` });
     } finally {
       setLoading(false);
       setTimeout(() => setStatus(null), 8000);
@@ -203,31 +203,6 @@ export default function SettingsView({ userSettings, setUserSettings, token, sho
           >
             {loading ? <><RefreshCw size={13} className="animate-spin" /> Syncing…</> : <><Save size={13} /> Save & Sync</>}
           </button>
-        </div>
-      </div>
-
-      {/* How it works */}
-      <div className="glass" style={{ borderRadius: 14, padding: '22px 24px' }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>How It Works</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {[
-            { n: '1', title: 'Add Your Username', desc: 'Enter your LeetCode and/or Codeforces usernames above.' },
-            { n: '2', title: 'Save & Auto-Sync', desc: 'Click "Save & Sync" — your submissions are fetched automatically.' },
-            { n: '3', title: 'Sync Anytime', desc: 'Use the "Sync Now" button in the header to pull latest data.' },
-            { n: '4', title: 'Track & Analyze', desc: 'View solved problems, streaks, heatmaps and analytics on your dashboard.' },
-          ].map(s => (
-            <div key={s.n} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-              <div style={{
-                width: 26, height: 26, borderRadius: 8, background: 'var(--indigo-dim)',
-                color: 'var(--indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, fontWeight: 800, flexShrink: 0
-              }}>{s.n}</div>
-              <div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>{s.title}</p>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{s.desc}</p>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>

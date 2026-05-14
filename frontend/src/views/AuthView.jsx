@@ -26,38 +26,17 @@ export default function AuthView({ onAuth, loading, error }) {
         <div style={{ position: 'absolute', bottom: '15%', right: '5%', width: 160, height: 160, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
         <div className="animate-float" style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
-          <div style={{
-            width: 72, height: 72, borderRadius: 20, margin: '0 auto 24px',
-            background: 'linear-gradient(135deg, #6366F1, #10B981)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 0 40px rgba(99,102,241,0.4)'
-          }}>
-            <Trophy size={32} color="white" />
-          </div>
+          <img src="/logo.png" alt="AlgoTrack Logo" style={{
+            width: 80, height: 80, borderRadius: 20, margin: '0 auto 24px',
+            boxShadow: '0 0 40px rgba(99,102,241,0.4)',
+            display: 'block'
+          }} />
           <h1 style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 12 }}>
             <span className="gradient-text">AlgoTrack</span>
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: 15, maxWidth: 280, lineHeight: 1.7 }}>
             Track your competitive programming journey across LeetCode & Codeforces — all in one place.
           </p>
-        </div>
-
-        {/* Feature chips */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 40, width: '100%', maxWidth: 280 }}>
-          {[
-            { icon: '⚡', text: 'Auto-sync from LeetCode & Codeforces' },
-            { icon: '📊', text: 'Activity heatmap & streak tracking' },
-            { icon: '📝', text: 'Rich notes with code & complexity' },
-          ].map((f, i) => (
-            <div key={i} style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '10px 14px', borderRadius: 10,
-              background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)'
-            }}>
-              <span style={{ fontSize: 16 }}>{f.icon}</span>
-              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{f.text}</span>
-            </div>
-          ))}
         </div>
       </div>
 

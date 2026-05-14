@@ -233,8 +233,8 @@ export default function NotesView({ problems, onUpdateNote }) {
                   {editing ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                       {[
-                        { label: '⏱ Time Complexity', key: 'timeComplexity', placeholder: 'e.g. O(N log N)' },
-                        { label: '💾 Space Complexity', key: 'spaceComplexity', placeholder: 'e.g. O(N)' },
+                        { label: 'Time Complexity', key: 'timeComplexity', placeholder: 'e.g. O(N log N)' },
+                        { label: 'Space Complexity', key: 'spaceComplexity', placeholder: 'e.g. O(N)' },
                       ].map(f => (
                         <div key={f.key}>
                           <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>{f.label}</label>
@@ -251,11 +251,11 @@ export default function NotesView({ problems, onUpdateNote }) {
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       {[
-                        { label: 'Time Complexity', value: typeof selected.complexity === 'object' ? selected.complexity?.time : selected.complexity, icon: '⏱' },
-                        { label: 'Space Complexity', value: typeof selected.complexity === 'object' ? selected.complexity?.space : '', icon: '💾' },
+                        { label: 'Time Complexity', value: typeof selected.complexity === 'object' ? selected.complexity?.time : selected.complexity },
+                        { label: 'Space Complexity', value: typeof selected.complexity === 'object' ? selected.complexity?.space : '' },
                       ].map(c => (
                         <div key={c.label} className="glass" style={{ borderRadius: 12, padding: '16px 18px' }}>
-                          <p style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{c.icon} {c.label}</p>
+                          <p style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{c.label}</p>
                           <p style={{ fontSize: 20, fontFamily: '"JetBrains Mono", monospace', color: c.value ? 'var(--indigo-light)' : 'var(--text-muted)', fontWeight: 600 }}>
                             {c.value || '—'}
                           </p>

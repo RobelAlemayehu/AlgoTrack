@@ -15,26 +15,39 @@ import CompareView   from './views/CompareView';
 
 const API = 'http://localhost:5000';
 
+function toLocalDateStr(date) {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function calcStreak(problems, lcCalendar) {
-  // Build a set of active days from both CF problems and LC calendar
   const daySet = new Set();
   (problems || []).forEach(p => {
-    const d = new Date(p.syncedAt || p.createdAt || 0);
-    d.setHours(0, 0, 0, 0);
-    daySet.add(d.getTime());
+    daySet.add(toLocalDateStr(p.syncedAt || p.createdAt || 0));
   });
   Object.keys(lcCalendar || {}).forEach(ts => {
-    const d = new Date(parseInt(ts) * 1000);
-    d.setHours(0, 0, 0, 0);
-    daySet.add(d.getTime());
+    daySet.add(toLocalDateStr(parseInt(ts) * 1000));
   });
-  const sorted = [...daySet].sort((a, b) => b - a);
+
+  const sorted = [...daySet].sort((a, b) => b.localeCompare(a));
+  if (sorted.length === 0) return 0;
+
+  const todayStr = toLocalDateStr(new Date());
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = toLocalDateStr(yesterday);
+
+  if (sorted[0] !== todayStr && sorted[0] !== yesterdayStr) return 0;
+
   let streak = 0;
-  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let curr = new Date(sorted[0]);
   for (let i = 0; i < sorted.length; i++) {
-    const exp = new Date(today); exp.setDate(exp.getDate() - i);
-    if (sorted[i] === exp.getTime()) streak++;
-    else break;
+    const check = toLocalDateStr(curr);
+    if (sorted[i] === check) {
+      streak++;
+      curr.setDate(curr.getDate() - 1);
+    } else {
+      break;
+    }
   }
   return streak;
 }
@@ -64,10 +77,41 @@ export default function App() {
   const [cfMaxRating,setCfMaxRating]= useState(0);
   const [cfRank,     setCfRank]     = useState('');
 
-  // ── Popup ─────────────────────────────────────────────────────────────────
+  // ── Notifications ────────────────────────────────────────────────────────
+  const [notifications, setNotifications] = useState([]);
   const [popup, setPopup] = useState({ isOpen: false, title: '', message: '', type: 'info' });
   const showPopup = (title, message, type = 'info') => setPopup({ isOpen: true, title, message, type });
   const closePopup = () => setPopup(p => ({ ...p, isOpen: false }));
+
+  // Check for daily solve and notifications
+  useEffect(() => {
+    if (!token) return;
+    const checkActivity = () => {
+      const todayStr = toLocalDateStr(new Date());
+      const solvedToday = problems.some(p => toLocalDateStr(p.syncedAt || p.createdAt) === todayStr)
+                       || Object.keys(lcCalendar).some(ts => toLocalDateStr(parseInt(ts) * 1000) === todayStr);
+
+      const now = new Date();
+      const endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
+      const msLeft = endOfDay - now;
+      const hrsLeft = msLeft / (1000 * 60 * 60);
+
+      const newNotifs = [];
+      if (!solvedToday) {
+        if (hrsLeft <= 1) {
+          newNotifs.push({ id: '1h', text: 'Only 1 hour left to keep your streak! Solve a problem now.', urgency: 'high' });
+        } else if (hrsLeft <= 3) {
+          newNotifs.push({ id: '3h', text: '3 hours remaining to solve a problem for today.', urgency: 'medium' });
+        }
+      }
+      setNotifications(newNotifs);
+    };
+
+    checkActivity();
+    const timer = setInterval(checkActivity, 60000); // Check every minute
+    return () => clearInterval(timer);
+  }, [token, problems, lcCalendar]);
 
   // ── Fetch all user data from backend ──────────────────────────────────────
   const fetchData = async (tok = token) => {
@@ -190,8 +234,7 @@ export default function App() {
       const results = await Promise.all(reqs);
       await fetchData();
       setLastSyncTime(new Date());
-      const total = problems.length;
-      showPopup('Sync Complete! 🎉', `Data updated successfully.`, 'success');
+      showPopup('Sync Complete!', `Data updated successfully.`, 'success');
     } catch (err) {
       showPopup('Sync Failed', 'Check your internet connection.', 'error');
     } finally { setLoading(false); }
@@ -272,6 +315,7 @@ export default function App() {
             loading={loading}
             onSearch={setSearchQuery}
             searchQuery={searchQuery}
+            notifications={notifications}
           />
         )}
         <main style={{ flex: 1, overflowY: 'auto' }}>

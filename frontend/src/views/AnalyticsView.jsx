@@ -121,7 +121,7 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
       {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
         <StatMini label="Total Solved"   value={stats.total}               sub="Lifetime"           color="var(--emerald)" />
-        <StatMini label="Current Streak" value={`${stats.streak}d`}        sub="Keep it up! 🔥"    color="var(--orange)" />
+        <StatMini label="Current Streak" value={`${stats.streak}d`}        sub="Keep it up!"    color="var(--orange)" />
         <StatMini label="Hard Problems"  value={stats.hard}                sub={`${stats.total ? Math.round((stats.hard / stats.total) * 100) : 0}% of total`} color="var(--red)" />
         <StatMini label="LC Active Days" value={lcCalDays || stats.weekly[9]?.count || 0} sub={lcCalDays ? 'from LC calendar' : 'this week'} color="var(--indigo-light)" />
       </div>

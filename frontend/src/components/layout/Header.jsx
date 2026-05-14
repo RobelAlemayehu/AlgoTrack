@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, RefreshCw, Bell } from 'lucide-react';
 
-export default function Header({ onSync, loading, onSearch, searchQuery }) {
+export default function Header({ onSync, loading, onSearch, searchQuery, notifications = [] }) {
   const [notifOpen, setNotifOpen] = useState(false);
 
   return (
@@ -41,22 +41,45 @@ export default function Header({ onSync, loading, onSearch, searchQuery }) {
               width: 38, height: 38, borderRadius: 10,
               background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', color: 'var(--text-secondary)', transition: 'background 0.15s'
+              cursor: 'pointer', color: notifications.length > 0 ? 'var(--orange)' : 'var(--text-secondary)', transition: 'background 0.15s',
+              position: 'relative'
             }}
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.09)'}
             onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
           >
             <Bell size={16} />
+            {notifications.length > 0 && (
+              <span style={{
+                position: 'absolute', top: -2, right: -2, width: 8, height: 8,
+                borderRadius: '50%', background: 'var(--red)', border: '2px solid var(--bg-base)'
+              }} />
+            )}
           </button>
           {notifOpen && (
             <div className="glass animate-fade-in" style={{
-              position: 'absolute', right: 0, top: 46, width: 280, borderRadius: 12,
-              padding: '12px', zIndex: 200
+              position: 'absolute', right: 0, top: 46, width: 300, borderRadius: 12,
+              padding: '16px', zIndex: 200, boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
             }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>NOTIFICATIONS</p>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '10px 0', textAlign: 'center' }}>
-                No notifications yet.<br/>Sync your profiles to get started!
-              </div>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 12, letterSpacing: '0.05em' }}>NOTIFICATIONS</p>
+              {notifications.length === 0 ? (
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '10px 0', textAlign: 'center' }}>
+                  No active notifications.<br/>You're all caught up!
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {notifications.map(n => (
+                    <div key={n.id} style={{
+                      padding: '10px 12px', borderRadius: 8,
+                      background: n.urgency === 'high' ? 'rgba(239,68,68,0.1)' : 'rgba(249,115,22,0.1)',
+                      border: `1px solid ${n.urgency === 'high' ? 'rgba(239,68,68,0.2)' : 'rgba(249,115,22,0.2)'}`,
+                      color: n.urgency === 'high' ? 'var(--red)' : 'var(--orange)',
+                      fontSize: 12, lineHeight: 1.4
+                    }}>
+                      {n.text}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

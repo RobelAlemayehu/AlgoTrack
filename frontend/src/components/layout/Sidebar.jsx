@@ -33,14 +33,11 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout, total
 
       {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 6px', marginBottom: 32 }}>
-        <div style={{
+        <img src="/logo.png" alt="Logo" style={{
           width: 38, height: 38,
-          background: 'linear-gradient(135deg, #6366F1, #10B981)',
-          borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: 10, display: 'block',
           boxShadow: '0 0 20px rgba(99,102,241,0.3)'
-        }}>
-          <Trophy size={18} color="white" />
-        </div>
+        }} />
         <div>
           <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>AlgoTrack</div>
           <div style={{ fontSize: 9, color: 'var(--indigo-light)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Pro Tracker</div>

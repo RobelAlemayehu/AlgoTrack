@@ -83,7 +83,7 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
       {/* Stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
         <StatCard title="Total Solved" value={totalSolved} sub={`+${thisWeek} this week`} subColor="var(--emerald)" accent="#10B981" icon={<CheckCircle2 size={20} />} />
-        <StatCard title="Current Streak" value={`${streak}d`} sub={streak > 0 ? 'Keep it up! 🔥' : 'Start today!'} subColor="var(--orange)" accent="#F97316" icon={<Flame size={20} />} />
+        <StatCard title="Current Streak" value={`${streak}d`} sub={streak > 0 ? 'Keep it up!' : 'Start today!'} subColor="var(--orange)" accent="#F97316" icon={<Flame size={20} />} />
         <StatCard title="Review Needed" value={reviewNeeded} sub={reviewNeeded === 0 ? 'All caught up!' : 'Problems to revisit'} subColor="var(--yellow)" accent="#F59E0B" icon={<AlertCircle size={20} />} />
       </div>
 
