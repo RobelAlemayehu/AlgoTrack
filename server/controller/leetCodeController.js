@@ -164,7 +164,7 @@ const syncLeetCode = async (req, res) => {
               platform: 'LeetCode',
               difficulty: meta.difficulty,
               tags: meta.tags,
-              syncedAt: new Date(parseInt(sub.timestamp) * 1000)
+              syncedAt: sub.timestamp ? new Date(parseInt(sub.timestamp) * 1000) : new Date()
             }
           },
           upsert: true

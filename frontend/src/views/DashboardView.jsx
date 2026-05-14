@@ -40,6 +40,8 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
   const [recLoading, setRecLoading] = useState(false);
 
   const safe = Array.isArray(problems) ? problems : [];
+  const sorted = [...safe].sort((a, b) => new Date(b.syncedAt || b.createdAt) - new Date(a.syncedAt || a.createdAt));
+  
   const lcCount = lcStats?.total || safe.filter(p => p.platform === 'LeetCode').length;
   const cfCount = safe.filter(p => p.platform === 'Codeforces').length;
   const reviewNeeded = safe.filter(p => p.status === 'Review').length;
@@ -47,7 +49,7 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
   const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
   const thisWeek = safe.filter(p => new Date(p.syncedAt || p.createdAt) >= weekAgo).length;
 
-  const recent = safe.slice(0, 8);
+  const recent = sorted.slice(0, 8);
 
   // Load recommendations
   useEffect(() => {

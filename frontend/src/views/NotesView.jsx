@@ -20,13 +20,14 @@ export default function NotesView({ problems, onUpdateNote }) {
   const [form, setForm] = useState({ explanation: '', code: '', timeComplexity: '', spaceComplexity: '' });
 
   const safe = Array.isArray(problems) ? problems : [];
+  const sorted = [...safe].sort((a, b) => new Date(b.syncedAt || b.createdAt) - new Date(a.syncedAt || a.createdAt));
 
-  const filtered = safe.filter(p =>
+  const filtered = sorted.filter(p =>
     p.title?.toLowerCase().includes(search.toLowerCase()) ||
     p.platform?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const selected = safe.find(p => p._id === selectedId);
+  const selected = sorted.find(p => p._id === selectedId);
 
   useEffect(() => {
     if (!selectedId && safe.length > 0) setSelectedId(safe[0]._id);

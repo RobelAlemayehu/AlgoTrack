@@ -188,7 +188,7 @@ export default function App() {
         setAuthErr(data.msg || 'Authentication failed');
       }
     } catch {
-      setAuthErr('Cannot connect to server. Make sure the backend is running on port 5000.');
+      setAuthErr('Unable to reach the server. Please ensure the backend is running.');
     } finally { setLoading(false); }
   };
 
