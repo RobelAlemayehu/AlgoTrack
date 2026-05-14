@@ -13,7 +13,7 @@ import NotesView     from './views/NotesView';
 import SettingsView  from './views/SettingsView';
 import CompareView   from './views/CompareView';
 
-const API = 'http://localhost:5000';
+const API = 'https://algotrack-1.onrender.com';
 
 function toLocalDateStr(date) {
   const d = new Date(date);

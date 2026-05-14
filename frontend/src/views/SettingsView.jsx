@@ -29,7 +29,7 @@ export default function SettingsView({ userSettings, setUserSettings, token, sho
     setStatus({ type: 'info', msg: 'Saving handles…' });
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/profile', {
+      const res = await fetch('https://algotrack-1.onrender.com/api/auth/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ handles: { leetcode: form.leetcodeHandle, codeforces: form.codeforcesHandle } })
@@ -50,7 +50,7 @@ export default function SettingsView({ userSettings, setUserSettings, token, sho
       // Reset old data
       setStatus({ type: 'info', msg: 'Resetting old data...' });
       try {
-        await fetch('http://localhost:5000/api/sync/reset', {
+        await fetch('https://algotrack-1.onrender.com/api/sync/reset', {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -65,7 +65,7 @@ export default function SettingsView({ userSettings, setUserSettings, token, sho
       if (form.codeforcesHandle) {
         setStatus({ type: 'info', msg: 'Syncing Codeforces...' });
         try {
-          const r = await fetch(`http://localhost:5000/api/sync/codeforces?handle=${form.codeforcesHandle}`, {
+          const r = await fetch(`https://algotrack-1.onrender.com/api/sync/codeforces?handle=${form.codeforcesHandle}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           if (r.ok) { cfSyncResult = await r.json(); successes.push(`Codeforces (${cfSyncResult.count || 0} problems)`); }
@@ -76,7 +76,7 @@ export default function SettingsView({ userSettings, setUserSettings, token, sho
       if (form.leetcodeHandle) {
         setStatus({ type: 'info', msg: 'Syncing LeetCode...' });
         try {
-          const r = await fetch('http://localhost:5000/api/sync/leetcode', {
+          const r = await fetch('https://algotrack-1.onrender.com/api/sync/leetcode', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ handle: form.leetcodeHandle })
@@ -87,7 +87,7 @@ export default function SettingsView({ userSettings, setUserSettings, token, sho
       }
 
       // Fetch updated problems and broadcast with all profile data
-      const probRes = await fetch('http://localhost:5000/api/sync/all', { headers: { 'Authorization': `Bearer ${token}` } });
+      const probRes = await fetch('https://algotrack-1.onrender.com/api/sync/all', { headers: { 'Authorization': `Bearer ${token}` } });
       const probData = await probRes.json();
       window.dispatchEvent(new CustomEvent('dataUpdated', { detail: {
         problems:    Array.isArray(probData) ? probData : [],

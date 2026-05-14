@@ -55,7 +55,7 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
   useEffect(() => {
     if (!token || safe.length === 0) return;
     setRecLoading(true);
-    fetch('http://localhost:5000/api/sync/recommend', { headers: { Authorization: `Bearer ${token}` } })
+    fetch('https://algotrack-1.onrender.com/api/sync/recommend', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => setRecommendations(d))
       .catch(() => {})

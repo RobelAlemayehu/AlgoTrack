@@ -60,7 +60,7 @@ export default function CompareView({ token, myStats }) {
       const params = new URLSearchParams();
       if (cfHandle) params.set('cf', cfHandle);
       if (lcHandle) params.set('lc', lcHandle);
-      const res  = await fetch(`http://localhost:5000/api/sync/compare?${params}`, {
+      const res  = await fetch(`https://algotrack-1.onrender.com/api/sync/compare?${params}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
