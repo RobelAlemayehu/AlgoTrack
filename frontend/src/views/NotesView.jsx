@@ -58,9 +58,9 @@ export default function NotesView({ problems, onUpdateNote }) {
   };
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
+    <div className="notes-layout" style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
       {/* Problem list sidebar */}
-      <div style={{
+      <div className="notes-sidebar" style={{
         width: 260, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column',
         background: 'var(--bg-card)', flexShrink: 0
       }}>
@@ -108,7 +108,7 @@ export default function NotesView({ problems, onUpdateNote }) {
       </div>
 
       {/* Editor panel */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-base)', overflow: 'hidden' }}>
+      <div className="notes-editor" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-base)', overflow: 'hidden' }}>
         {selected ? (
           <>
             {/* Problem header */}
@@ -174,7 +174,7 @@ export default function NotesView({ problems, onUpdateNote }) {
                     onChange={e => setForm({ ...form, explanation: e.target.value })}
                     placeholder="Write your explanation, approach, and key insights here…"
                     style={{
-                      width: '100%', height: 'calc(100vh - 280px)', background: 'var(--bg-card)',
+                      width: '100%', height: 'calc(100vh - 340px)', background: 'var(--bg-card)',
                       border: '1px solid var(--border)', borderRadius: 12, padding: 16,
                       color: 'var(--text-primary)', fontSize: 14, fontFamily: 'Inter, sans-serif',
                       lineHeight: 1.7, outline: 'none', resize: 'none', transition: 'border-color 0.15s'
@@ -206,7 +206,7 @@ export default function NotesView({ problems, onUpdateNote }) {
                     onChange={e => setForm({ ...form, code: e.target.value })}
                     placeholder="// Paste your solution code here…"
                     style={{
-                      width: '100%', height: 'calc(100vh - 280px)', background: 'var(--bg-base)',
+                      width: '100%', height: 'calc(100vh - 340px)', background: 'var(--bg-base)',
                       border: '1px solid var(--border)', borderRadius: 12, padding: 16,
                       color: '#a5f3fc', fontSize: 13, fontFamily: '"JetBrains Mono", monospace',
                       lineHeight: 1.6, outline: 'none', resize: 'none', transition: 'border-color 0.15s'

@@ -61,6 +61,7 @@ export default function App() {
   // ── Nav / Search ──────────────────────────────────────────────────────────
   const [activeTab,    setActiveTab]    = useState('Home');
   const [searchQuery,  setSearchQuery]  = useState('');
+  const [sidebarOpen,  setSidebarOpen]  = useState(false);
 
   // ── Core data ─────────────────────────────────────────────────────────────
   const [problems,     setProblems]     = useState([]);
@@ -298,14 +299,23 @@ export default function App() {
     }
   };
 
+  const handleNavChange = (tab) => {
+    setActiveTab(tab);
+    setSidebarOpen(false);
+  };
+
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-base)' }}>
+    <div className="main-layout" style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-base)' }}>
+      {/* Mobile overlay */}
+      <div className={`sidebar-overlay${sidebarOpen ? ' open' : ''}`} onClick={() => setSidebarOpen(false)} />
+
       <Sidebar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleNavChange}
         user={user}
         onLogout={handleLogout}
         totalSolved={totalSolved}
+        isOpen={sidebarOpen}
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -316,6 +326,18 @@ export default function App() {
             onSearch={setSearchQuery}
             searchQuery={searchQuery}
             notifications={notifications}
+            onMenuToggle={() => setSidebarOpen(v => !v)}
+          />
+        )}
+        {activeTab === 'Notes' && (
+          <Header
+            onSync={handleSync}
+            loading={loading}
+            onSearch={setSearchQuery}
+            searchQuery={searchQuery}
+            notifications={notifications}
+            onMenuToggle={() => setSidebarOpen(v => !v)}
+            minimal
           />
         )}
         <main style={{ flex: 1, overflowY: 'auto' }}>

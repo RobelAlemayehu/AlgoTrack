@@ -110,7 +110,7 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
   const lcCalDays = Object.keys(calMap).length;
 
   return (
-    <div className="animate-fade-in" style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 22 }}>
+    <div className="animate-fade-in view-pad" style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div>
         <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Analytics</h1>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
@@ -119,7 +119,7 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
       </div>
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+      <div className="grid-stats-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
         <StatMini label="Total Solved"   value={stats.total}               sub="Lifetime"           color="var(--emerald)" />
         <StatMini label="Current Streak" value={`${stats.streak}d`}        sub="Keep it up!"    color="var(--orange)" />
         <StatMini label="Hard Problems"  value={stats.hard}                sub={`${stats.total ? Math.round((stats.hard / stats.total) * 100) : 0}% of total`} color="var(--red)" />
@@ -155,7 +155,7 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
       </div>
 
       {/* Charts row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+      <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
         {/* Weekly bar chart */}
         <div className="glass" style={{ borderRadius: 14, padding: '20px 22px' }}>
           <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Weekly Activity</h2>

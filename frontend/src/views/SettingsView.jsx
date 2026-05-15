@@ -138,7 +138,7 @@ export default function SettingsView({ userSettings, setUserSettings, token, sho
   ];
 
   return (
-    <div className="animate-fade-in" style={{ padding: '28px 32px', maxWidth: 680, display: 'flex', flexDirection: 'column', gap: 22 }}>
+    <div className="animate-fade-in settings-wrap view-pad" style={{ padding: '28px 32px', maxWidth: 680, display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Settings</h1>

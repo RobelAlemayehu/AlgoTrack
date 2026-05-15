@@ -109,7 +109,7 @@ export default function TrackerView({ problems, lastSyncTime, onSync, searchQuer
   };
 
   return (
-    <div className="animate-fade-in" style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="animate-fade-in view-pad" style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
@@ -125,7 +125,7 @@ export default function TrackerView({ problems, lastSyncTime, onSync, searchQuer
       </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <div className="tracker-filters" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <Filter size={13} color="var(--text-muted)" />
         <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Platform</span>
         {PLATFORMS.map(p => (
@@ -168,7 +168,7 @@ export default function TrackerView({ problems, lastSyncTime, onSync, searchQuer
               </th>
               <th>Platform</th>
               <th>Difficulty</th>
-              <th>Tags</th>
+              <th className="col-tags">Tags</th>
               <th onClick={() => toggleSort('syncedAt')} style={{ cursor: 'pointer', userSelect: 'none' }}>
                 Solved {sort.key === 'syncedAt' ? (sort.dir === 'asc' ? '↑' : '↓') : ''}
               </th>
@@ -206,7 +206,7 @@ export default function TrackerView({ problems, lastSyncTime, onSync, searchQuer
                 <td>
                   <span className={getDiffClass(p.difficulty)}>{p.difficulty || '—'}</span>
                 </td>
-                <td>
+                <td className="col-tags">
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 200 }}>
                     {(p.tags || []).length === 0 ? (
                       <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>—</span>

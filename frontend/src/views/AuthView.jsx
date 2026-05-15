@@ -16,7 +16,7 @@ export default function AuthView({ onAuth, loading, error }) {
       background: 'var(--bg-base)', overflow: 'hidden'
     }}>
       {/* Left decorative panel */}
-      <div style={{
+      <div className="auth-deco" style={{
         width: '45%', background: 'linear-gradient(145deg, #0D1526 0%, #111827 100%)',
         borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', padding: 48, position: 'relative', overflow: 'hidden'
@@ -41,7 +41,7 @@ export default function AuthView({ onAuth, loading, error }) {
       </div>
 
       {/* Right form panel */}
-      <div style={{
+      <div className="auth-form-panel" style={{
         flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32
       }}>
         <div style={{ width: '100%', maxWidth: 380 }} className="animate-fade-in">

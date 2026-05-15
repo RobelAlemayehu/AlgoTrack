@@ -82,7 +82,7 @@ export default function CompareView({ token, myStats }) {
   const getTagCount = (stats, tag) => stats?.topTags?.find(t => t.tag === tag)?.count || 0;
 
   return (
-    <div className="animate-fade-in" style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 22 }}>
+    <div className="animate-fade-in view-pad" style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div>
         <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <Users size={22} color="var(--indigo-light)" /> Compare
@@ -93,7 +93,7 @@ export default function CompareView({ token, myStats }) {
       {/* Search row */}
       <div className="glass" style={{ borderRadius: 14, padding: '20px 22px' }}>
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 14 }}>Enter the person you want to compare with:</p>
-        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+        <div className="compare-inputs" style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 180 }}>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Codeforces Handle</label>
             <input className="input-field" placeholder="e.g. tourist" value={cfHandle} onChange={e => setCfHandle(e.target.value.trim())} onKeyDown={e => e.key === 'Enter' && handleCompare()} />
@@ -139,7 +139,7 @@ export default function CompareView({ token, myStats }) {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+          <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
             {/* Head-to-head stats */}
             <div className="glass" style={{ borderRadius: 14, padding: '20px 22px' }}>
               <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>Head-to-Head</h2>

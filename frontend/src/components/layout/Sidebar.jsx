@@ -12,9 +12,9 @@ const NAV_ITEMS = [
   { id: 'Compare',   icon: <Users size={18} />,           label: 'Compare' },
 ];
 
-export default function Sidebar({ activeTab, setActiveTab, user, onLogout, totalSolved }) {
+export default function Sidebar({ activeTab, setActiveTab, user, onLogout, totalSolved, isOpen }) {
   return (
-    <aside style={{
+    <aside className={`sidebar${isOpen ? ' open' : ''}`} style={{
       width: 240, minWidth: 240,
       background: 'var(--bg-card)',
       borderRight: '1px solid var(--border)',

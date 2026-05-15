@@ -316,3 +316,137 @@ html, body, #root {
   align-items: center;
   justify-content: center;
 }
+
+/* ── Responsive layout ─────────────────────────────────────────────────── */
+
+/* Sidebar overlay on mobile */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 199;
+  backdrop-filter: blur(2px);
+}
+
+@media (max-width: 768px) {
+  /* Show hamburger */
+  .menu-toggle {
+    display: flex !important;
+  }
+
+  /* Sidebar becomes a fixed overlay drawer */
+  .sidebar {
+    position: fixed !important;
+    left: 0; top: 0; bottom: 0;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    width: 240px !important;
+    min-width: 240px !important;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  .sidebar-overlay.open {
+    display: block;
+  }
+
+  /* Main content takes full width */
+  .main-layout {
+    flex-direction: column;
+  }
+
+  /* Header search shrinks */
+  .header-search {
+    width: 100% !important;
+    max-width: 200px;
+  }
+
+  /* View padding */
+  .view-pad {
+    padding: 16px !important;
+  }
+
+  /* Stat cards: 1 column on mobile */
+  .grid-stats-3 {
+    grid-template-columns: 1fr !important;
+  }
+  .grid-stats-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .grid-2col {
+    grid-template-columns: 1fr !important;
+  }
+  .grid-main {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Notes view: stack sidebar + editor */
+  .notes-layout {
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .notes-sidebar {
+    width: 100% !important;
+    max-height: 240px;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border);
+  }
+  .notes-editor {
+    height: calc(100vh - 300px);
+  }
+
+  /* Auth: hide decorative panel */
+  .auth-deco {
+    display: none !important;
+  }
+  .auth-form-panel {
+    padding: 24px 20px !important;
+  }
+
+  /* Tracker filters wrap */
+  .tracker-filters {
+    gap: 6px !important;
+  }
+
+  /* Table: hide less important columns */
+  .col-tags, .col-platform { display: none; }
+  th.col-tags, td.col-tags,
+  th.col-platform, td.col-platform { display: none; }
+
+  /* Compare inputs stack */
+  .compare-inputs {
+    flex-direction: column !important;
+  }
+
+  /* Settings max-width full */
+  .settings-wrap {
+    max-width: 100% !important;
+    padding: 16px !important;
+  }
+
+  /* Heatmap scrollable */
+  .heatmap-scroll {
+    overflow-x: auto;
+  }
+
+  /* Stat value smaller on mobile */
+  .stat-value {
+    font-size: 1.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .grid-stats-4 {
+    grid-template-columns: 1fr !important;
+  }
+  .header-search {
+    max-width: 140px;
+  }
+  .btn-primary span.btn-label,
+  .btn-ghost span.btn-label {
+    display: none;
+  }
+}

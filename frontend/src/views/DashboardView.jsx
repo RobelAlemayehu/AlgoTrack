@@ -65,7 +65,7 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
   const totalSolved = cfCount + lcCount;
 
   return (
-    <div className="animate-fade-in" style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 22 }}>
+    <div className="animate-fade-in view-pad" style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 22 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
@@ -83,14 +83,14 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
       </div>
 
       {/* Stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+      <div className="grid-stats-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
         <StatCard title="Total Solved" value={totalSolved} sub={`+${thisWeek} this week`} subColor="var(--emerald)" accent="#10B981" icon={<CheckCircle2 size={20} />} />
         <StatCard title="Current Streak" value={`${streak}d`} sub={streak > 0 ? 'Keep it up!' : 'Start today!'} subColor="var(--orange)" accent="#F97316" icon={<Flame size={20} />} />
         <StatCard title="Review Needed" value={reviewNeeded} sub={reviewNeeded === 0 ? 'All caught up!' : 'Problems to revisit'} subColor="var(--yellow)" accent="#F59E0B" icon={<AlertCircle size={20} />} />
       </div>
 
       {/* Platform breakdown row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
+      <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
         {[
           { label: 'LeetCode', count: lcCount, easy: lcStats?.easy, medium: lcStats?.medium, hard: lcStats?.hard, color: 'var(--orange)', bg: 'var(--orange-dim)' },
           { label: 'Codeforces', count: cfCount, rating: cfRating, rank: cfRank, color: 'var(--blue)', bg: 'var(--blue-dim)' },
@@ -117,7 +117,7 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
       </div>
 
       {/* Main content: recent + sidebar */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 18 }}>
+      <div className="grid-main" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 18 }}>
         {/* Recent Activity */}
         <div className="glass" style={{ borderRadius: 14, padding: '20px 22px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>

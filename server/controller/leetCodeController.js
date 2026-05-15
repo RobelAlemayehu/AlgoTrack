@@ -9,14 +9,12 @@ const HEADERS = {
   'Origin': 'https://leetcode.com',
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
   'Accept': 'application/json, text/plain, */*',
-  'Accept-Language': 'en-US,en;q=0.9',
   'x-csrftoken': 'dummy',
 };
 
-// Sleep helper to avoid rate limiting
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-// ── 1. Fetch profile stats + calendar + recent submissions in ONE query ──────
+// Fetch profile stats + calendar
 const fetchLCProfile = async (username) => {
   const query = {
     query: `
@@ -28,12 +26,7 @@ const fetchLCProfile = async (username) => {
           }
           userCalendar {
             submissionCalendar
-            streak
-            totalActiveDays
           }
-        }
-        recentAcSubmissionList(username: $username, limit: 100) {
-          id title titleSlug timestamp
         }
       }`,
     variables: { username }
@@ -42,14 +35,62 @@ const fetchLCProfile = async (username) => {
   return res.data?.data;
 };
 
-// ── 2. Fetch tags + difficulty for a single problem slug ─────────────────────
+// Fetch all AC submissions via paginated submissionList
+const fetchAllACSubs = async (username) => {
+  const PAGE_SIZE = 20;
+  let offset = 0;
+  const allSubs = new Map(); // titleSlug -> sub (deduplicated)
+
+  while (true) {
+    const query = {
+      query: `
+        query submissions($username: String!, $limit: Int!, $offset: Int!) {
+          submissionList(username: $username, limit: $limit, offset: $offset) {
+            hasNext
+            submissions {
+              id
+              title
+              titleSlug
+              timestamp
+              statusDisplay
+            }
+          }
+        }`,
+      variables: { username, limit: PAGE_SIZE, offset }
+    };
+
+    let data;
+    try {
+      const res = await axios.post(LC_GQL, query, { headers: HEADERS, timeout: 15000 });
+      data = res.data?.data?.submissionList;
+    } catch {
+      break;
+    }
+
+    if (!data || !data.submissions?.length) break;
+
+    data.submissions.forEach(s => {
+      if (s.statusDisplay === 'Accepted' && !allSubs.has(s.titleSlug)) {
+        allSubs.set(s.titleSlug, s);
+      }
+    });
+
+    if (!data.hasNext) break;
+    offset += PAGE_SIZE;
+    await sleep(300); // avoid rate limiting
+  }
+
+  return [...allSubs.values()];
+};
+
+// Fetch difficulty + tags for a single problem slug
 const fetchProblemMeta = async (titleSlug) => {
   const query = {
     query: `
       query questionMeta($titleSlug: String!) {
         question(titleSlug: $titleSlug) {
           difficulty
-          topicTags { name slug }
+          topicTags { name }
         }
       }`,
     variables: { titleSlug }
@@ -66,7 +107,6 @@ const fetchProblemMeta = async (titleSlug) => {
   }
 };
 
-// ── Main sync handler ────────────────────────────────────────────────────────
 const syncLeetCode = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -76,24 +116,21 @@ const syncLeetCode = async (req, res) => {
       return res.status(400).json({ msg: 'Please set your LeetCode handle in Settings.' });
     }
 
-    // Fetch profile
-    let data;
+    // Fetch profile stats + calendar
+    let profileData;
     try {
-      data = await fetchLCProfile(username);
+      profileData = await fetchLCProfile(username);
     } catch (err) {
-      return res.status(502).json({
-        error: 'Could not reach LeetCode API. Their servers may be rate-limiting server requests.',
-        detail: err.message
-      });
+      return res.status(502).json({ error: 'Could not reach LeetCode API.', detail: err.message });
     }
 
-    if (!data?.matchedUser) {
+    if (!profileData?.matchedUser) {
       return res.status(404).json({ error: 'LeetCode user not found or profile is private.' });
     }
 
-    const { matchedUser, recentAcSubmissionList } = data;
+    const { matchedUser } = profileData;
 
-    // ── Store aggregate stats + calendar in User ──────────────────────────────
+    // Build lcStats
     const acNums = matchedUser.submitStatsGlobal?.acSubmissionNum || [];
     const lcStats = {
       easy:    acNums.find(x => x.difficulty === 'Easy')?.count   || 0,
@@ -103,7 +140,7 @@ const syncLeetCode = async (req, res) => {
       ranking: matchedUser.profile?.ranking || 0
     };
 
-    // submissionCalendar is a JSON string like '{"1700000000":3,...}'
+    // Parse calendar
     let lcCalendar = {};
     try {
       const raw = matchedUser.userCalendar?.submissionCalendar;
@@ -112,20 +149,14 @@ const syncLeetCode = async (req, res) => {
 
     await User.findByIdAndUpdate(req.user.id, { lcStats, lcCalendar });
 
-    // ── Deduplicate submissions by titleSlug ───────────────────────────────────
-    const submissions = Array.isArray(recentAcSubmissionList) ? recentAcSubmissionList : [];
-    const uniqueMap = new Map();
-    submissions.forEach(s => {
-      if (!uniqueMap.has(s.titleSlug)) uniqueMap.set(s.titleSlug, s);
-    });
-    const uniqueSubs = [...uniqueMap.values()];
+    // Fetch all AC submissions via pagination
+    const uniqueSubs = await fetchAllACSubs(username);
 
     if (uniqueSubs.length === 0) {
-      return res.json({ message: 'LeetCode synced (no recent submissions found).', countSynced: 0, lcStats });
+      return res.json({ message: 'LeetCode synced (no submissions found).', countSynced: 0, lcStats });
     }
 
-    // ── Fetch problem meta (difficulty + tags) for unknown problems ────────────
-    // Check what we already have in DB to avoid re-fetching
+    // Check existing problems to avoid re-fetching meta
     const existingProbs = await Problem.find({
       userId: req.user.id,
       platform: 'LeetCode',
@@ -139,18 +170,15 @@ const syncLeetCode = async (req, res) => {
       }
     });
 
-    // Only fetch meta for problems we don't know yet (rate-limited to 5 at a time)
+    // Fetch meta only for new/unknown problems (cap at 50 per sync to avoid timeout)
     const unknownSlugs = uniqueSubs.map(s => s.titleSlug).filter(s => !knownMeta[s]);
-    console.log(`[LC] Fetching meta for ${unknownSlugs.length} new problems...`);
-
-    const metaBatch = Math.min(unknownSlugs.length, 30); // cap at 30 to avoid timeout
+    const metaBatch = Math.min(unknownSlugs.length, 50);
     for (let i = 0; i < metaBatch; i++) {
-      const slug = unknownSlugs[i];
-      knownMeta[slug] = await fetchProblemMeta(slug);
-      if (i > 0 && i % 5 === 0) await sleep(500); // small delay every 5 requests
+      knownMeta[unknownSlugs[i]] = await fetchProblemMeta(unknownSlugs[i]);
+      if (i > 0 && i % 5 === 0) await sleep(400);
     }
 
-    // ── Bulk upsert ────────────────────────────────────────────────────────────
+    // Bulk upsert
     const ops = uniqueSubs.map(sub => {
       const meta = knownMeta[sub.titleSlug] || { difficulty: 'Unknown', tags: [] };
       return {
@@ -178,9 +206,8 @@ const syncLeetCode = async (req, res) => {
       message: 'LeetCode synced!',
       countSynced: uniqueSubs.length,
       lcStats,
-      calendarDays: Object.keys(lcCalendar).length,
       note: lcStats.total > uniqueSubs.length
-        ? `Your actual total is ${lcStats.total} problems. LeetCode API only returns the most recent ${uniqueSubs.length} to unauthenticated servers.`
+        ? `Synced ${uniqueSubs.length} unique problems. Total AC count is ${lcStats.total} (includes duplicates across contests).`
         : undefined
     });
 
