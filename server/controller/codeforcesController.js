@@ -28,7 +28,6 @@ const syncCodeforces = async (req, res) => {
     }
 
     // Fetch ALL submissions — CF API returns all of them without a hard cap
-    // count=100000 ensures we get everything (most users have < 10k submissions)
     let submissions;
     try {
       const subRes = await axios.get(
