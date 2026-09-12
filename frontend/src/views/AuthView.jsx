@@ -1,14 +1,24 @@
 import React, { useState } from 'react';
-import { Lock, Mail, User as UserIcon, Terminal } from 'lucide-react';
+import { Lock, Mail, User as UserIcon, Terminal, Eye, EyeOff } from 'lucide-react';
 
 export default function AuthView({ onAuth, loading, error }) {
   const [isLogin, setIsLogin] = useState(true);
-  const [form, setForm] = useState({ email: '', password: '', username: '' });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [form, setForm] = useState({ email: '', password: '', confirmPassword: '', username: '' });
+  const [localErr, setLocalErr] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onAuth(form, isLogin);
+    setLocalErr('');
+    if (!isLogin && form.password !== form.confirmPassword) {
+      setLocalErr('Passwords do not match. Please verify your passwords.');
+      return;
+    }
+    onAuth({ email: form.email, password: form.password, username: form.username }, isLogin);
   };
+
+  const displayError = localErr || error;
 
   return (
     <div style={{
@@ -30,7 +40,7 @@ export default function AuthView({ onAuth, loading, error }) {
             AlgoTrack
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 14, maxWidth: 280, lineHeight: 1.6 }}>
-            DSA & Competitive Programming progress tracker for LeetCode & Codeforces.
+            DSA &amp; Competitive Programming progress tracker for LeetCode &amp; Codeforces.
           </p>
           <div style={{ marginTop: 24, padding: '8px 14px', borderRadius: 6, background: 'var(--bg-muted)', border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>
             <Terminal size={14} />
@@ -74,22 +84,67 @@ export default function AuthView({ onAuth, loading, error }) {
                 onChange={e => setForm({ ...form, email: e.target.value })}
               />
             </div>
+
+            {/* Password input with eye toggle */}
             <div style={{ position: 'relative' }}>
               <Lock size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
-                className="input-field" type="password" placeholder="Password" required
-                style={{ paddingLeft: 34 }}
+                className="input-field"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Password"
+                required
+                style={{ paddingLeft: 34, paddingRight: 36 }}
                 value={form.password}
                 onChange={e => setForm({ ...form, password: e.target.value })}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                style={{
+                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)',
+                  display: 'flex', alignItems: 'center', padding: 2
+                }}
+                title={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
             </div>
 
-            {error && (
+            {/* Confirm Password input (Registration only) */}
+            {!isLogin && (
+              <div style={{ position: 'relative' }}>
+                <Lock size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input
+                  className="input-field"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="Confirm password"
+                  required
+                  style={{ paddingLeft: 34, paddingRight: 36 }}
+                  value={form.confirmPassword}
+                  onChange={e => setForm({ ...form, confirmPassword: e.target.value })}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(v => !v)}
+                  style={{
+                    position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)',
+                    display: 'flex', alignItems: 'center', padding: 2
+                  }}
+                  title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+            )}
+
+            {displayError && (
               <div style={{
                 padding: '8px 12px', borderRadius: 6,
                 background: 'var(--red-dim)', border: '1px solid rgba(255,123,114,0.3)',
                 color: 'var(--cf-red)', fontSize: 12
-              }}>{error}</div>
+              }}>{displayError}</div>
             )}
 
             <button className="btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center', marginTop: 4, padding: '10px' }}>
@@ -99,7 +154,7 @@ export default function AuthView({ onAuth, loading, error }) {
 
           <div style={{ textAlign: 'center', marginTop: 18 }}>
             <button
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => { setIsLogin(!isLogin); setLocalErr(''); }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)' }}
             >
               {isLogin ? "Don't have an account? " : "Already have an account? "}

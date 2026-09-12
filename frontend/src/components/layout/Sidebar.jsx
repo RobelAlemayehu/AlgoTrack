@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   LayoutDashboard, Activity, BarChart3, BookOpen,
-  Settings, LogOut, Zap, Users, Repeat
+  Settings, LogOut, Zap, Users, Repeat, User
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { id: 'Analytics', icon: <BarChart3 size={16} />,       label: 'Analytics' },
   { id: 'Notes',     icon: <BookOpen size={16} />,        label: 'Notes' },
   { id: 'Compare',   icon: <Users size={16} />,           label: 'Compare' },
+  { id: 'Profile',   icon: <User size={16} />,            label: 'Profile' },
 ];
 
 export default function Sidebar({ activeTab, setActiveTab, user, onLogout, totalSolved, isOpen }) {

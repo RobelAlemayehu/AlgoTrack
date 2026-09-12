@@ -136,6 +136,53 @@ router.post('/refresh', async (req, res) => {
   }
 });
 
+// Update password
+router.put('/password', auth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ msg: 'Please provide both current and new passwords' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ msg: 'New password must be at least 6 characters' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ msg: 'User not found' });
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) return res.status(400).json({ msg: 'Current password is incorrect' });
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    res.json({ msg: 'Password updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update username
+router.put('/username', auth, async (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username || !username.trim()) {
+      return res.status(400).json({ msg: 'Username is required' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: { username: username.trim() } },
+      { new: true }
+    ).select('-password');
+
+    res.json({ msg: 'Username updated', username: user.username });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Logout endpoint
 router.post('/logout', auth, async (req, res) => {
   try {

@@ -13,6 +13,7 @@ import NotesView     from './views/NotesView';
 import SettingsView  from './views/SettingsView';
 import CompareView   from './views/CompareView';
 import ReviewView    from './views/ReviewView';
+import ProfileView   from './views/ProfileView';
 
 const API = import.meta.env.VITE_API || 'https://algotrack-1.onrender.com';
 
@@ -103,14 +104,15 @@ export default function App() {
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
 
   // ── Core data ─────────────────────────────────────────────────────────────
-  const [problems,     setProblems]     = useState([]);
-  const [userSettings, setUserSettings] = useState({ leetcodeHandle: '', codeforcesHandle: '' });
-  const [lastSyncTime, setLastSyncTime] = useState(null);
-  const [loading,      setLoading]      = useState(false);
+  const [problems,      setProblems]      = useState([]);
+  const [backendStreak, setBackendStreak] = useState(null);
+  const [userSettings,  setUserSettings]  = useState({ leetcodeHandle: '', codeforcesHandle: '' });
+  const [lastSyncTime,  setLastSyncTime]  = useState(null);
+  const [loading,       setLoading]       = useState(false);
 
-  // ── LeetCode real data ────────────────────────────────────────────────    
-  const [lcStats,    setLcStats]    = useState({});   // { easy, medium, hard, total, ranking }
-  const [lcCalendar, setLcCalendar] = useState({});   // { "unixTs": count, ... }
+  // ── LeetCode real data ────────────────────────────────────────────────────
+  const [lcStats,    setLcStats]    = useState(null);   // { easy, medium, hard, total, ranking }
+  const [lcCalendar, setLcCalendar] = useState(null);   // { "unixTs": count, ... }
 
   // ── Codeforces profile ────────────────────────────────────────────────────
   const [cfRating,   setCfRating]   = useState(0);
@@ -127,9 +129,9 @@ export default function App() {
   useEffect(() => {
     if (!token) return;
     const checkActivity = () => {
-      const todayStr = toLocalDateStr(new Date());
-      const solvedToday = problems.some(p => toLocalDateStr(p.syncedAt || p.createdAt) === todayStr)
-                       || Object.keys(lcCalendar).some(ts => toLocalDateStr(parseInt(ts) * 1000) === todayStr);
+      const todayStr = getUtcDayStr(new Date());
+      const solvedToday = (problems || []).some(p => !p.archived && getUtcDayStr(p.solvedAt || p.syncedAt || p.createdAt) === todayStr)
+                       || Object.keys(lcCalendar || {}).some(ts => (lcCalendar[ts] > 0) && getUtcDayStr(Number(ts) * 1000) === todayStr);
 
       const now = new Date();
       const endOfDay = new Date();
@@ -175,12 +177,17 @@ export default function App() {
         if (profData.preferences?.theme) setTheme(profData.preferences.theme);
       }
 
-      const probRes = await fetch(`${API}/api/sync/all`, {
+      const tzOffset = new Date().getTimezoneOffset();
+      const probRes = await fetch(`${API}/api/sync/all?tzOffset=${tzOffset}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (probRes.ok) {
         const probData = await probRes.json();
-        setProblems(Array.isArray(probData) ? probData : []);
+        const probsArray = Array.isArray(probData) ? probData : (probData.problems || []);
+        setProblems(probsArray);
+        if (!Array.isArray(probData) && typeof probData.streak === 'number') {
+          setBackendStreak(probData.streak);
+        }
       }
     } catch (err) {
       console.error('fetchData error:', err);
@@ -331,6 +338,8 @@ export default function App() {
         return <SettingsView userSettings={userSettings} setUserSettings={setUserSettings} token={token} showPopup={showPopup} theme={theme} onThemeToggle={toggleTheme} />;
       case 'Compare':
         return <CompareView token={token} />;
+      case 'Profile':
+        return <ProfileView userSettings={userSettings} setUserSettings={setUserSettings} token={token} showPopup={showPopup} onDataRefresh={fetchData} />;
       default:
         return null;
     }
@@ -364,6 +373,8 @@ export default function App() {
           notifications={notifications}
           onMenuToggle={() => setSidebarOpen(v => !v)}
           minimal={activeTab === 'Notes'}
+          theme={theme}
+          onThemeToggle={toggleTheme}
         />
         <main style={{ flex: 1, overflowY: 'auto' }}>
           {renderView()}

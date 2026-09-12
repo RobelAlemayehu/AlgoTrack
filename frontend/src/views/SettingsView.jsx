@@ -1,34 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Code, Save, RefreshCw, CheckCircle2, AlertCircle, ExternalLink, Download, Sun, Moon, ShieldAlert, RotateCcw } from 'lucide-react';
+import { Save, RefreshCw, CheckCircle2, AlertCircle, Download, Sun, Moon, RotateCcw, Sliders } from 'lucide-react';
 
 const API = import.meta.env.VITE_API || 'https://algotrack-1.onrender.com';
 
-const extractUsername = (input, platform) => {
-  if (!input) return '';
-  const clean = input.trim();
-  if (!clean.includes('/')) return clean;
-  try {
-    const parts = clean.split('/').filter(Boolean);
-    if (platform === 'LeetCode') {
-      const uIdx = parts.indexOf('u');
-      return uIdx !== -1 && uIdx < parts.length - 1 ? parts[uIdx + 1] : parts[parts.length - 1];
-    }
-    return parts[parts.length - 1];
-  } catch { return clean; }
-};
-
-export default function SettingsView({ userSettings, setUserSettings, token, showPopup, theme, onThemeToggle }) {
-  const [form, setForm] = useState({ leetcodeHandle: '', codeforcesHandle: '' });
+export default function SettingsView({ userSettings, token, showPopup, theme, onThemeToggle }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [archivedCount, setArchivedCount] = useState(0);
 
   useEffect(() => {
-    setForm({
-      leetcodeHandle:   userSettings?.leetcodeHandle   || '',
-      codeforcesHandle: userSettings?.codeforcesHandle || ''
-    });
     fetchArchivedInfo();
   }, [userSettings]);
 
@@ -43,121 +23,23 @@ export default function SettingsView({ userSettings, setUserSettings, token, sho
     } catch (e) {}
   };
 
-  const checkHandleChange = () => {
-    const oldSettings = { ...userSettings };
-    const hasChanged = oldSettings.leetcodeHandle !== form.leetcodeHandle || oldSettings.codeforcesHandle !== form.codeforcesHandle;
-    if (hasChanged && (oldSettings.leetcodeHandle || oldSettings.codeforcesHandle)) {
-      setShowConfirmModal(true);
-    } else {
-      executeSaveAndSync();
-    }
-  };
-
-  const executeSaveAndSync = async () => {
-    setShowConfirmModal(false);
-    setLoading(true);
-    setStatus({ type: 'info', msg: 'Saving profile settings…' });
-
-    try {
-      const res = await fetch(`${API}/api/auth/profile`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ handles: {
-          leetcode:   form.leetcodeHandle,
-          codeforces: form.codeforcesHandle
-        } })
-      });
-
-      if (!res.ok) throw new Error('Failed to save profile');
-
-      const oldSettings = { ...userSettings };
-      setUserSettings(form);
-      const hasChanged = oldSettings.leetcodeHandle !== form.leetcodeHandle || oldSettings.codeforcesHandle !== form.codeforcesHandle;
-
-      if (hasChanged) {
-        setStatus({ type: 'info', msg: 'Archiving existing records (30-day recovery active)…' });
-        try {
-          await fetch(`${API}/api/sync/reset`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` }
-          });
-        } catch { /* continue */ }
-      }
-
-      // Sync platforms
-      let lcSyncResult = null;
-      let cfSyncResult = null;
-      const errors = [];
-      const successes = [];
-
-      if (form.codeforcesHandle) {
-        setStatus({ type: 'info', msg: 'Syncing Codeforces submissions…' });
-        try {
-          const r = await fetch(`${API}/api/sync/codeforces?handle=${form.codeforcesHandle}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          if (r.ok) { cfSyncResult = await r.json(); successes.push(`Codeforces (${cfSyncResult.count || 0} solved)`); }
-          else { const e = await r.json(); errors.push(`Codeforces: ${e.msg || 'Sync error'}`); }
-        } catch { errors.push('Codeforces network error'); }
-      }
-
-      if (form.leetcodeHandle) {
-        setStatus({ type: 'info', msg: 'Syncing LeetCode submissions…' });
-        try {
-          const r = await fetch(`${API}/api/sync/leetcode`, {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ handle: form.leetcodeHandle })
-          });
-          if (r.ok) { lcSyncResult = await r.json(); successes.push(`LeetCode (${lcSyncResult.countSynced || 0} synced)`); }
-          else { const e = await r.json(); errors.push(`LeetCode: ${e.msg || 'Sync error'}`); }
-        } catch { errors.push('LeetCode network error'); }
-      }
-
-      // Refresh problem list
-      const probRes = await fetch(`${API}/api/sync/all`, { headers: { Authorization: `Bearer ${token}` } });
-      const probData = await probRes.json();
-      window.dispatchEvent(new CustomEvent('dataUpdated', { detail: {
-        problems: Array.isArray(probData) ? probData : [],
-        lcStats: lcSyncResult?.lcStats || null,
-        cfRating: cfSyncResult?.cfRating || 0,
-        cfMaxRating: cfSyncResult?.cfMaxRating || 0,
-        cfRank: cfSyncResult?.cfRank || ''
-      } }));
-
-      fetchArchivedInfo();
-
-      if (errors.length > 0 && successes.length === 0) {
-        setStatus({ type: 'error', msg: `Sync Failed: ${errors.join(' · ')}` });
-      } else {
-        setStatus({ type: 'success', msg: `Synced successfully: ${successes.join(', ')}` });
-        showPopup?.('Sync Complete!', `Synced: ${successes.join(', ')}`, 'success');
-      }
-    } catch (err) {
-      setStatus({ type: 'error', msg: `Error: ${err.message}` });
-    } finally {
-      setLoading(false);
-      setTimeout(() => setStatus(null), 6000);
-    }
-  };
-
   const handleForceResync = async () => {
     setLoading(true);
     setStatus({ type: 'info', msg: 'Force-resyncing all Codeforces & LeetCode data…' });
     try {
-      if (form.codeforcesHandle) {
-        await fetch(`${API}/api/sync/codeforces?handle=${form.codeforcesHandle}&force=true`, { headers: { Authorization: `Bearer ${token}` } });
+      if (userSettings?.codeforcesHandle) {
+        await fetch(`${API}/api/sync/codeforces?handle=${userSettings.codeforcesHandle}&force=true`, { headers: { Authorization: `Bearer ${token}` } });
       }
-      if (form.leetcodeHandle) {
+      if (userSettings?.leetcodeHandle) {
         await fetch(`${API}/api/sync/leetcode`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ handle: form.leetcodeHandle })
+          body: JSON.stringify({ handle: userSettings.leetcodeHandle })
         });
       }
       const probRes = await fetch(`${API}/api/sync/all`, { headers: { Authorization: `Bearer ${token}` } });
       const probData = await probRes.json();
-      window.dispatchEvent(new CustomEvent('dataUpdated', { detail: { problems: Array.isArray(probData) ? probData : [] } }));
+      window.dispatchEvent(new CustomEvent('dataUpdated', { detail: { problems: Array.isArray(probData) ? probData : (probData.problems || []) } }));
       setStatus({ type: 'success', msg: 'Force resync completed!' });
     } catch (err) {
       setStatus({ type: 'error', msg: 'Force resync failed.' });
@@ -179,7 +61,7 @@ export default function SettingsView({ userSettings, setUserSettings, token, sho
         fetchArchivedInfo();
         const probRes = await fetch(`${API}/api/sync/all`, { headers: { Authorization: `Bearer ${token}` } });
         const probData = await probRes.json();
-        window.dispatchEvent(new CustomEvent('dataUpdated', { detail: { problems: Array.isArray(probData) ? probData : [] } }));
+        window.dispatchEvent(new CustomEvent('dataUpdated', { detail: { problems: Array.isArray(probData) ? probData : (probData.problems || []) } }));
       }
     } catch (e) {
       showPopup?.('Error', 'Failed to restore archived problems', 'error');
@@ -206,30 +88,13 @@ export default function SettingsView({ userSettings, setUserSettings, token, sho
     }
   };
 
-  const platforms = [
-    {
-      key: 'leetcodeHandle',
-      label: 'LeetCode Handle',
-      placeholder: 'e.g. rovel  or  https://leetcode.com/u/rovel',
-      link: form.leetcodeHandle ? `https://leetcode.com/u/${form.leetcodeHandle}` : null,
-      platform: 'LeetCode',
-    },
-    {
-      key: 'codeforcesHandle',
-      label: 'Codeforces Handle',
-      placeholder: 'e.g. tourist  or  https://codeforces.com/profile/tourist',
-      link: form.codeforcesHandle ? `https://codeforces.com/profile/${form.codeforcesHandle}` : null,
-      platform: 'Codeforces',
-    },
-  ];
-
   return (
     <div className="animate-fade-in view-pad" style={{ padding: '24px 28px', maxWidth: 680, display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: 14 }}>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Account Settings</h1>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>Manage competitive programming handles & data preferences</p>
+          <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>System Settings</h1>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>Manage app preferences, theme &amp; data operations</p>
         </div>
         {status && (
           <div style={{
@@ -244,54 +109,34 @@ export default function SettingsView({ userSettings, setUserSettings, token, sho
         )}
       </div>
 
-      {/* Handles Panel */}
+      {/* App Preferences & Theme Panel */}
       <div className="glass" style={{ borderRadius: 6, padding: '18px 20px' }}>
-        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Platform Profiles</h2>
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>
-          Paste your handle or profile URL — handles are extracted automatically.
+        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Sliders size={15} style={{ color: 'var(--accent)' }} /> App Preferences
+        </h2>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
+          Customize interface appearance and display options.
         </p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {platforms.map(p => (
-            <div key={p.key}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
-                  {p.label}
-                  {form[p.key] && <span style={{ fontSize: 11, color: 'var(--accent)', fontFamily: 'var(--font-mono)', marginLeft: 6 }}>@{form[p.key]}</span>}
-                </label>
-                {p.link && (
-                  <a href={p.link} target="_blank" rel="noreferrer" style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, textDecoration: 'none' }}>
-                    <ExternalLink size={11} /> Profile
-                  </a>
-                )}
-              </div>
-              <input
-                className="input-field"
-                placeholder={p.placeholder}
-                value={form[p.key]}
-                onChange={e => setForm({ ...form, [p.key]: extractUsername(e.target.value, p.platform) })}
-                style={{ fontSize: 13 }}
-              />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Interface Theme</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Switch between Dark Charcoal and Light Mode</div>
             </div>
-          ))}
-        </div>
-
-        <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <p style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Handle changes automatically soft-archive previous records for 30 days.</p>
-          <button
-            className="btn-primary"
-            onClick={checkHandleChange}
-            disabled={loading || (!form.leetcodeHandle && !form.codeforcesHandle)}
-            style={{ fontSize: 12 }}
-          >
-            {loading ? <><RefreshCw size={13} className="animate-spin" /> Syncing…</> : <><Save size={13} /> Save &amp; Sync</>}
-          </button>
+            <button className="btn-ghost" onClick={onThemeToggle} style={{ fontSize: 12, gap: 6 }}>
+              {theme === 'dark' ? <Sun size={14} style={{ color: 'var(--lc-yellow)' }} /> : <Moon size={14} style={{ color: 'var(--accent)' }} />}
+              {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Force Resync & Recovery Panel */}
       <div className="glass" style={{ borderRadius: 6, padding: '18px 20px' }}>
-        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Sync Operations & Recovery</h2>
+        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <RefreshCw size={15} style={{ color: 'var(--accent)' }} /> Sync Operations &amp; Recovery
+        </h2>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
           Perform full resyncs or restore archived problem history.
         </p>
@@ -311,7 +156,9 @@ export default function SettingsView({ userSettings, setUserSettings, token, sho
 
       {/* Export Data Panel */}
       <div className="glass" style={{ borderRadius: 6, padding: '18px 20px' }}>
-        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Export Problem Data</h2>
+        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Download size={15} style={{ color: 'var(--accent)' }} /> Export Problem Data
+        </h2>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
           Download a full backup copy of your solved problems, code snippets, and notes.
         </p>
@@ -324,32 +171,6 @@ export default function SettingsView({ userSettings, setUserSettings, token, sho
           </button>
         </div>
       </div>
-
-      {/* Safer Handle Confirmation Modal */}
-      {showConfirmModal && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300
-        }}>
-          <div className="glass animate-fade-in" style={{ width: '100%', maxWidth: 440, padding: 24, borderRadius: 8, border: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--accent)', marginBottom: 12 }}>
-              <ShieldAlert size={20} />
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Confirm Handle Change</h3>
-            </div>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 16 }}>
-              You are updating your platform handle. Existing problem records will be soft-archived and preserved for 30 days so your notes and custom tags are never lost.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button className="btn-ghost" onClick={() => setShowConfirmModal(false)} style={{ fontSize: 12 }}>
-                Cancel
-              </button>
-              <button className="btn-primary" onClick={executeSaveAndSync} style={{ fontSize: 12 }}>
-                Proceed &amp; Sync
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
