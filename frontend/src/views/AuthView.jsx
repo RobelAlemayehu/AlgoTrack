@@ -23,7 +23,8 @@ export default function AuthView({ onAuth, loading, error }) {
   return (
     <div style={{
       minHeight: '100vh', display: 'flex',
-      background: 'var(--bg-base)', overflow: 'hidden'
+      background: 'var(--bg-base)', overflow: 'hidden',
+      position: 'relative'
     }}>
       {/* Left decorative panel */}
       <div className="auth-deco" style={{
@@ -34,7 +35,7 @@ export default function AuthView({ onAuth, loading, error }) {
         <div style={{ textAlign: 'center', zIndex: 1 }}>
           <img src="/logo.png" alt="AlgoTrack Logo" style={{
             width: 64, height: 64, borderRadius: 10, margin: '0 auto 20px',
-            display: 'block'
+            display: 'block', objectFit: 'contain'
           }} />
           <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 10, color: 'var(--text-primary)' }}>
             AlgoTrack
@@ -49,11 +50,33 @@ export default function AuthView({ onAuth, loading, error }) {
         </div>
       </div>
 
-      {/* Right form panel */}
+      {/* Right form panel with background watermark ONLY */}
       <div className="auth-form-panel" style={{
-        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32
+        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32,
+        position: 'relative', overflow: 'hidden'
       }}>
-        <div style={{ width: '100%', maxWidth: 360 }} className="animate-fade-in">
+        {/* Right Side Watermark Logo */}
+        <img
+          src="/logo.png"
+          alt=""
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%) rotate(-8deg)',
+            width: '500px',
+            height: '500px',
+            objectFit: 'contain',
+            opacity: 0.05,
+            pointerEvents: 'none',
+            zIndex: 0,
+            userSelect: 'none',
+            filter: 'drop-shadow(0 0 30px rgba(240, 136, 62, 0.12))'
+          }}
+        />
+
+        <div style={{ width: '100%', maxWidth: 360, position: 'relative', zIndex: 1 }} className="animate-fade-in">
           <div style={{ marginBottom: 28 }}>
             <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
               {isLogin ? 'Sign In' : 'Create Account'}
