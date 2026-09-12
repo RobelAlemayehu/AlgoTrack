@@ -65,7 +65,7 @@ function getRatingClass(diff) {
   return 'badge-unknown';
 }
 
-export default function DashboardView({ problems, streak, lcStats, cfRating, cfRank, token, onDataRefresh }) {
+export default function DashboardView({ problems, streak, lcStats, totalSolved: passedTotalSolved, cfRating, cfRank, token, onDataRefresh }) {
   const [recommendations, setRecommendations] = useState(null);
   const [recLoading, setRecLoading] = useState(false);
   const [contests, setContests] = useState([]);
@@ -78,9 +78,9 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
   const safe = Array.isArray(problems) ? problems : [];
   const sorted = [...safe].sort((a, b) => new Date(b.solvedAt || b.syncedAt || b.createdAt) - new Date(a.solvedAt || a.syncedAt || a.createdAt));
 
-  const lcCount = lcStats?.total || safe.filter(p => p.platform === 'LeetCode').length;
-  const cfCount = safe.filter(p => p.platform === 'Codeforces').length;
-  const totalSolved = cfCount + lcCount;
+  const lcCount = lcStats?.total || safe.filter(p => !p.archived && p.platform === 'LeetCode').length;
+  const cfCount = safe.filter(p => !p.archived && p.platform === 'Codeforces').length;
+  const totalSolved = passedTotalSolved !== undefined ? passedTotalSolved : (cfCount + lcCount);
 
   // Load Profile goals & calendar
   useEffect(() => {

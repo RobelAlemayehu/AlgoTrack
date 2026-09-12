@@ -6,7 +6,7 @@ export default function ToastContainer({ toasts = [], onCloseToast }) {
 
   return (
     <div style={{
-      position: 'fixed', bottom: 24, right: 24, zIndex: 3000,
+      position: 'fixed', top: 24, right: 24, zIndex: 9999,
       display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 360, width: '100%'
     }}>
       {toasts.map(t => {

@@ -132,7 +132,17 @@ export default function App() {
   // ── Core data ─────────────────────────────────────────────────────────────
   const [problems,      setProblems]      = useState([]);
   const [backendStreak, setBackendStreak] = useState(null);
-  const [userSettings,  setUserSettings]  = useState({ leetcodeHandle: '', codeforcesHandle: '' });
+  const [userSettings,  setUserSettings]  = useState(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('user'));
+      return {
+        leetcodeHandle:   u?.handles?.leetcode   || '',
+        codeforcesHandle: u?.handles?.codeforces || ''
+      };
+    } catch {
+      return { leetcodeHandle: '', codeforcesHandle: '' };
+    }
+  });
   const [lastSyncTime,  setLastSyncTime]  = useState(null);
   const [loading,       setLoading]       = useState(false);
 
@@ -356,8 +366,10 @@ export default function App() {
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const streak      = calcStreak(problems, lcCalendar);
-  const totalSolved = (lcStats?.total ?? problems.filter(p => p.platform === 'LeetCode').length)
-                    + problems.filter(p => p.platform === 'Codeforces').length;
+  const lcCount     = Math.max(lcStats?.total || 0, (problems || []).filter(p => !p.archived && p.platform === 'LeetCode').length);
+  const cfCount     = (problems || []).filter(p => !p.archived && p.platform === 'Codeforces').length;
+  const otherCount  = (problems || []).filter(p => !p.archived && p.platform !== 'LeetCode' && p.platform !== 'Codeforces').length;
+  const totalSolved = lcCount + cfCount + otherCount;
 
   // ── Not logged in ─────────────────────────────────────────────────────────
   if (!token) {
@@ -373,7 +385,7 @@ export default function App() {
   const renderView = () => {
     switch (activeTab) {
       case 'Home':
-        return <DashboardView problems={problems} streak={streak} lcStats={lcStats} cfRating={cfRating} cfRank={cfRank} token={token} onDataRefresh={fetchData} />;
+        return <DashboardView problems={problems} streak={streak} lcStats={lcStats} totalSolved={totalSolved} cfRating={cfRating} cfRank={cfRank} token={token} onDataRefresh={fetchData} />;
       case 'Tracker':
         return <TrackerView problems={problems} lastSyncTime={lastSyncTime} onSync={handleSync} searchQuery={searchQuery} token={token} onDataRefresh={fetchData} />;
       case 'Review':

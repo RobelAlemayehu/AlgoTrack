@@ -117,19 +117,39 @@ function buildTargetStats(cfData, lcData, cfHandle, lcHandle) {
 }
 
 async function fetchCFStats(handle) {
-  const [infoRes, statusRes] = await Promise.all([
-    axios.get(`https://codeforces.com/api/user.info?handles=${handle}`, { timeout: 10000 }),
-    axios.get(`https://codeforces.com/api/user.status?handle=${handle}&from=1&count=100000`, { timeout: 20000 })
-  ]);
+  let info = {};
+  try {
+    const infoRes = await axios.get(`https://codeforces.com/api/user.info?handles=${handle}`, { family: 4, timeout: 10000 });
+    if (infoRes.data.status === 'OK' && infoRes.data.result.length > 0) {
+      info = infoRes.data.result[0];
+    }
+  } catch (e) {}
 
-  const info = infoRes.data.status === 'OK' ? infoRes.data.result[0] : {};
-  const subs = statusRes.data.status === 'OK' ? statusRes.data.result : [];
+  let subs = [];
+  try {
+    let from = 1;
+    const count = 50;
+    let hasMore = true;
+    let pages = 0;
+    while (hasMore && pages < 50) {
+      const res = await axios.get(`https://codeforces.com/api/user.status?handle=${handle}&from=${from}&count=${count}`, { family: 4, timeout: 15000 });
+      if (res.data.status !== 'OK') break;
+      const batch = res.data.result || [];
+      if (batch.length === 0) break;
+      subs.push(...batch);
+      from += batch.length;
+      pages++;
+      if (batch.length < count) hasMore = false;
+    }
+  } catch (e) {}
 
   const uniqueSolved = new Map();
   const tagCounts = {};
   subs.forEach(sub => {
     if (sub.verdict !== 'OK') return;
-    const id = `CF-${sub.problem.contestId}${sub.problem.index}`;
+    const cId = sub.problem.contestId || sub.problem.problemsetName || 'GYM';
+    const idx = sub.problem.index || sub.problem.name;
+    const id = `CF-${cId}${idx}`;
     if (!uniqueSolved.has(id)) {
       uniqueSolved.set(id, true);
       (sub.problem.tags || []).forEach(t => { tagCounts[t] = (tagCounts[t] || 0) + 1; });

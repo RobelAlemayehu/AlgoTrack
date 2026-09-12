@@ -48,11 +48,23 @@ function TagBar({ tag, myCount, theirCount }) {
 }
 
 export default function CompareView({ token }) {
-  const [cfHandle, setCfHandle] = useState('');
-  const [lcHandle, setLcHandle] = useState('');
+  const [cfHandle, setCfHandle] = useState(() => localStorage.getItem('algotrack_compare_cf') || '');
+  const [lcHandle, setLcHandle] = useState(() => localStorage.getItem('algotrack_compare_lc') || '');
   const [loading, setLoading] = useState(false);
   const [result,  setResult]  = useState(null);
   const [error,   setError]   = useState('');
+
+  const updateCfHandle = (val) => {
+    setCfHandle(val);
+    if (val.trim()) localStorage.setItem('algotrack_compare_cf', val.trim());
+    else localStorage.removeItem('algotrack_compare_cf');
+  };
+
+  const updateLcHandle = (val) => {
+    setLcHandle(val);
+    if (val.trim()) localStorage.setItem('algotrack_compare_lc', val.trim());
+    else localStorage.removeItem('algotrack_compare_lc');
+  };
 
   const handleCompare = async () => {
     if (!cfHandle && !lcHandle) { setError('Enter at least one handle to compare with.'); return; }
@@ -65,10 +77,11 @@ export default function CompareView({ token }) {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || data.msg || 'Compare failed'); return; }
+      if (!res.ok) throw new Error(data.error || 'Comparison failed');
       setResult(data);
-    } catch (e) { setError('Network error: ' + e.message); }
-    finally { setLoading(false); }
+    } catch (err) {
+      setError(err.message);
+    } finally { setLoading(false); }
   };
 
   const me   = result?.me;
@@ -100,7 +113,7 @@ export default function CompareView({ token }) {
               className="input-field"
               placeholder="e.g. tourist"
               value={cfHandle}
-              onChange={e => setCfHandle(e.target.value.trim())}
+              onChange={e => updateCfHandle(e.target.value)}
               style={{ fontSize: 12 }}
             />
           </div>
@@ -110,7 +123,7 @@ export default function CompareView({ token }) {
               className="input-field"
               placeholder="e.g. neetcode"
               value={lcHandle}
-              onChange={e => setLcHandle(e.target.value.trim())}
+              onChange={e => updateLcHandle(e.target.value)}
               style={{ fontSize: 12 }}
             />
           </div>

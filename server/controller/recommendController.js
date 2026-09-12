@@ -52,7 +52,7 @@ const getRecommendations = async (req, res) => {
       try {
         const cfRes = await axios.get(
           `https://codeforces.com/api/problemset.problems?tags=${encodeURIComponent(tag)}`,
-          { timeout: 10000 }
+          { family: 4, timeout: 10000 }
         );
         if (cfRes.data.status !== 'OK') continue;
 

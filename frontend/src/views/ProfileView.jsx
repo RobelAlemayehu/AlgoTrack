@@ -85,6 +85,14 @@ export default function ProfileView({ userSettings, setUserSettings, token, show
 
       const oldSettings = { ...userSettings };
       setUserSettings(handlesForm);
+      try {
+        const cachedUser = JSON.parse(localStorage.getItem('user')) || {};
+        cachedUser.handles = {
+          leetcode: handlesForm.leetcodeHandle,
+          codeforces: handlesForm.codeforcesHandle
+        };
+        localStorage.setItem('user', JSON.stringify(cachedUser));
+      } catch {}
       const hasChanged = oldSettings.leetcodeHandle !== handlesForm.leetcodeHandle || oldSettings.codeforcesHandle !== handlesForm.codeforcesHandle;
 
       if (hasChanged) {
@@ -391,10 +399,11 @@ export default function ProfileView({ userSettings, setUserSettings, token, show
       {/* Safer Handle Confirmation Modal */}
       {showConfirmModal && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
         }}>
-          <div className="glass animate-fade-in" style={{ width: '100%', maxWidth: 440, padding: 24, borderRadius: 8, border: '1px solid var(--border)' }}>
+          <div className="glass animate-fade-in" style={{ width: '100%', maxWidth: 440, padding: 24, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-surface)', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--accent)', marginBottom: 12 }}>
               <ShieldAlert size={20} />
               <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Confirm Handle Change</h3>
