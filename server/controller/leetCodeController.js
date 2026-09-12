@@ -340,7 +340,7 @@ const syncLeetCode = async (req, res) => {
 
       for (let i = 0; i < targetCount; i++) {
         const sample = POPULAR_LC_PROBLEMS[i % POPULAR_LC_PROBLEMS.length];
-        const assignedDiff = difficultySequence[i] || sample.diff;
+        const assignedDiff = sample.diff || difficultySequence[i] || 'Easy';
         const ts = calendarTimeline[i] || calendarTimeline[i % (calendarTimeline.length || 1)] || (Math.floor(Date.now() / 1000) - (i * 86400));
         const slug = sample.slug || `leetcode-prob-${i + 1}`;
 

@@ -111,11 +111,6 @@ export default function PublicProfileView({ slug: routeSlug }) {
             <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>AlgoTrack</span>
             <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', background: 'var(--accent-dim)', color: 'var(--accent)', padding: '2px 6px', borderRadius: 4 }}>Public Portfolio</span>
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-            <Eye size={14} style={{ color: 'var(--accent)' }} />
-            <span>{stats.pageViews} Profile Views</span>
-          </div>
         </div>
 
         {/* Profile Card Header */}

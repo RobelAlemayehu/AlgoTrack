@@ -32,30 +32,52 @@ function calcStreak(problems, lcCalendar) {
     }
   });
 
-  if (daySet.size === 0) return 0;
+  if (daySet.size === 0) return { currentStreak: 0, maxStreak: 0 };
+
+  const dates = Array.from(daySet).sort();
+  let maxStreak = 0;
+  let currStreak = 0;
+  let prevDate = null;
+
+  dates.forEach(dStr => {
+    const d = new Date(dStr);
+    if (!prevDate) {
+      currStreak = 1;
+    } else {
+      const diffDays = Math.round((d - prevDate) / (1000 * 60 * 60 * 24));
+      if (diffDays === 1) {
+        currStreak++;
+      } else if (diffDays > 1) {
+        currStreak = 1;
+      }
+    }
+    if (currStreak > maxStreak) maxStreak = currStreak;
+    prevDate = d;
+  });
 
   const now = new Date();
   const todayStr = getLocalDateStr(now);
   const yesterdayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
   const yesterdayStr = getLocalDateStr(yesterdayDate);
 
-  if (!daySet.has(todayStr) && !daySet.has(yesterdayStr)) return 0;
+  let activeCurrentStreak = 0;
+  if (daySet.has(todayStr) || daySet.has(yesterdayStr)) {
+    const startStr = daySet.has(todayStr) ? todayStr : yesterdayStr;
+    const parts = startStr.split('-').map(Number);
+    const curr = new Date(parts[0], parts[1] - 1, parts[2]);
 
-  const startStr = daySet.has(todayStr) ? todayStr : yesterdayStr;
-  const parts = startStr.split('-').map(Number);
-  const curr = new Date(parts[0], parts[1] - 1, parts[2]);
-
-  let streak = 0;
-  while (true) {
-    const checkStr = getLocalDateStr(curr);
-    if (daySet.has(checkStr)) {
-      streak++;
-      curr.setDate(curr.getDate() - 1);
-    } else {
-      break;
+    while (true) {
+      const checkStr = getLocalDateStr(curr);
+      if (daySet.has(checkStr)) {
+        activeCurrentStreak++;
+        curr.setDate(curr.getDate() - 1);
+      } else {
+        break;
+      }
     }
   }
-  return streak;
+
+  return { currentStreak: activeCurrentStreak, maxStreak };
 }
 
 // Generate unique invite code e.g. GRP-A8K9X2
@@ -215,7 +237,8 @@ exports.getGroupLeaderboard = async (req, res) => {
       const otherCount = problems.filter(p => p.platform !== 'LeetCode' && p.platform !== 'Codeforces').length;
       const totalSolved = lcCount + cfCount + otherCount;
 
-      const streak = calcStreak(allUserProblems, member.lcCalendar);
+      const streakRes = calcStreak(allUserProblems, member.lcCalendar);
+      const streak = typeof streakRes === 'object' ? (streakRes.currentStreak || 0) : (streakRes || 0);
       const weeklyTarget = member.goals?.weeklyTarget || 5;
       const targetPercent = Math.min(100, Math.round((totalSolved / weeklyTarget) * 100));
 

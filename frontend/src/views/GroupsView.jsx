@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Users, Plus, UserPlus, Copy, LogOut, Flame, Trophy, CheckCircle2, AlertCircle, RefreshCw, X, ShieldCheck, Eye, ExternalLink, Award, Map, ChevronRight } from 'lucide-react';
 
 const API = import.meta.env.VITE_API || 'http://localhost:5000';
@@ -409,27 +410,19 @@ export default function GroupsView({ token, showPopup }) {
             <div className="glass" style={{ borderRadius: 8, padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
               <Users size={36} style={{ opacity: 0.3, margin: '0 auto 12px' }} />
               <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>No Study Group Selected</h2>
-              <p style={{ fontSize: 13, maxWidth: 360, margin: '0 auto 20px' }}>
-                Select a group from the left panel or create/join a group to view live member leaderboards.
+              <p style={{ fontSize: 13, maxWidth: 360, margin: '0 auto' }}>
+                Select a group from the left panel to view live member leaderboards.
               </p>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
-                <button className="btn-ghost" onClick={() => setModalType('join')} style={{ fontSize: 12 }}>
-                  <UserPlus size={14} /> Join Group
-                </button>
-                <button className="btn-primary" onClick={() => setModalType('create')} style={{ fontSize: 12 }}>
-                  <Plus size={14} /> Create Group
-                </button>
-              </div>
             </div>
           )}
         </div>
       </div>
 
       {/* Modal: Group Member Detailed Profile */}
-      {selectedMemberId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div className="glass animate-fade-in" style={{ borderRadius: 12, width: '100%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto', padding: 24, background: 'var(--bg-surface)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+      {selectedMemberId && createPortal(
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(6, 9, 26, 0.45)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="glass animate-fade-in" style={{ borderRadius: 12, width: '100%', maxWidth: 640, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-surface)', boxShadow: '0 20px 50px rgba(0,0,0,0.6)', border: '1px solid var(--border-hover)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <ShieldCheck size={18} style={{ color: 'var(--accent)' }} />
                 <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Group Member Profile</h3>
@@ -439,127 +432,120 @@ export default function GroupsView({ token, showPopup }) {
               </button>
             </div>
 
-            {memberProfileLoading ? (
-              <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
-                <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 10px', color: 'var(--accent)' }} />
-                <p style={{ fontSize: 13, fontFamily: 'var(--font-mono)' }}>Fetching member profile details…</p>
-              </div>
-            ) : memberProfileData ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {/* User Header */}
-                <div className="glass" style={{ borderRadius: 10, padding: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <div style={{
-                      width: 52, height: 52, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent) 0%, #ff5252 100%)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: '#fff'
-                    }}>
-                      {memberProfileData.username.substring(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                      <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)' }}>{memberProfileData.username}</h2>
-                      <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap', fontSize: 11, fontFamily: 'var(--font-mono)' }}>
-                        {memberProfileData.cfRank && (
-                          <span style={{ color: getRankColor(memberProfileData.cfRank), fontWeight: 700 }}>
-                            {memberProfileData.cfRank} ({memberProfileData.cfRating} max {memberProfileData.cfMaxRating})
-                          </span>
-                        )}
-                        {memberProfileData.handles.leetcode && <span style={{ color: 'var(--text-muted)' }}>LC: @{memberProfileData.handles.leetcode}</span>}
-                        {memberProfileData.handles.codeforces && <span style={{ color: 'var(--text-muted)' }}>CF: @{memberProfileData.handles.codeforces}</span>}
+            <div style={{ padding: 24, overflowY: 'auto', flex: 1 }}>
+              {memberProfileLoading ? (
+                <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 10px', color: 'var(--accent)' }} />
+                  <p style={{ fontSize: 13, fontFamily: 'var(--font-mono)' }}>Fetching member profile details…</p>
+                </div>
+              ) : memberProfileData ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                  {/* User Header */}
+                  <div className="glass" style={{ borderRadius: 10, padding: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <div style={{
+                        width: 52, height: 52, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent) 0%, #ff5252 100%)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: '#fff'
+                      }}>
+                        {memberProfileData.username.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)' }}>{memberProfileData.username}</h2>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap', fontSize: 11, fontFamily: 'var(--font-mono)' }}>
+                          {memberProfileData.cfRank && (
+                            <span style={{ color: getRankColor(memberProfileData.cfRank), fontWeight: 700 }}>
+                              {memberProfileData.cfRank} ({memberProfileData.cfRating} max {memberProfileData.cfMaxRating})
+                            </span>
+                          )}
+                          {memberProfileData.handles.leetcode && <span style={{ color: 'var(--text-muted)' }}>LC: @{memberProfileData.handles.leetcode}</span>}
+                          {memberProfileData.handles.codeforces && <span style={{ color: 'var(--text-muted)' }}>CF: @{memberProfileData.handles.codeforces}</span>}
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <a
-                    href={`/#/u/${encodeURIComponent(memberProfileData.publicSlug)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-primary"
-                    style={{ padding: '6px 12px', fontSize: 12, gap: 6 }}
-                  >
-                    View Portfolio <ExternalLink size={13} />
-                  </a>
+                  {/* Stat Cards Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }} className="grid-stats-3">
+                    <div className="glass" style={{ padding: 14, borderRadius: 8, textAlign: 'center' }}>
+                      <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>TOTAL SOLVED</span>
+                      <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--accent)', marginTop: 2 }}>{memberProfileData.stats.totalSolved}</p>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{memberProfileData.stats.lcCount} LC · {memberProfileData.stats.cfCount} CF</span>
+                    </div>
+
+                    <div className="glass" style={{ padding: 14, borderRadius: 8, textAlign: 'center' }}>
+                      <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>CURRENT STREAK</span>
+                      <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--cf-green)', marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                        <Flame size={16} /> {memberProfileData.stats.currentStreak ?? 0}d
+                      </p>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Max: {memberProfileData.stats.maxStreak ?? 0}d</span>
+                    </div>
+
+                    <div className="glass" style={{ padding: 14, borderRadius: 8, textAlign: 'center' }}>
+                      <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>DIFFICULTY</span>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>
+                        <span style={{ color: 'var(--cf-green)' }}>{memberProfileData.stats.easyCount}E</span> · <span style={{ color: 'var(--lc-yellow)' }}>{memberProfileData.stats.mediumCount}M</span> · <span style={{ color: 'var(--cf-red)' }}>{memberProfileData.stats.hardCount}H</span>
+                      </p>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Breakdown</span>
+                    </div>
+                  </div>
+
+                  {/* Topic Roadmap Progress */}
+                  {memberProfileData.roadmapSummaries && memberProfileData.roadmapSummaries.length > 0 && (
+                    <div className="glass" style={{ borderRadius: 8, padding: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                        <Map size={15} style={{ color: 'var(--accent)' }} />
+                        <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Topic Roadmap Progress</h4>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {memberProfileData.roadmapSummaries.map(rm => (
+                          <div key={rm.title} style={{ background: 'var(--bg-base)', padding: '8px 12px', borderRadius: 6 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
+                              <span>{rm.title}</span>
+                              <span style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>{rm.solvedCount}/{rm.totalProblems} ({rm.percent}%)</span>
+                            </div>
+                            <div className="progress-bar" style={{ height: 5, background: 'var(--bg-muted)' }}>
+                              <div className="progress-fill" style={{ width: `${rm.percent}%`, background: 'var(--accent)' }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Earned Achievements / Badges */}
+                  {memberProfileData.badges && memberProfileData.badges.length > 0 && (
+                    <div className="glass" style={{ borderRadius: 8, padding: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                        <Award size={15} style={{ color: 'var(--accent)' }} />
+                        <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Earned Achievements ({memberProfileData.badges.length})</h4>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8 }}>
+                        {memberProfileData.badges.map(b => (
+                          <div key={b.id || b.name} style={{ background: 'var(--bg-base)', padding: '8px 10px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 20 }}>{b.icon || '🏆'}</span>
+                            <div>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{b.name}</div>
+                              <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.2 }}>{b.description}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-
-                {/* Stat Cards Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }} className="grid-stats-3">
-                  <div className="glass" style={{ padding: 14, borderRadius: 8, textAlign: 'center' }}>
-                    <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>TOTAL SOLVED</span>
-                    <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--accent)', marginTop: 2 }}>{memberProfileData.stats.totalSolved}</p>
-                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{memberProfileData.stats.lcCount} LC · {memberProfileData.stats.cfCount} CF</span>
-                  </div>
-
-                  <div className="glass" style={{ padding: 14, borderRadius: 8, textAlign: 'center' }}>
-                    <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>CURRENT STREAK</span>
-                    <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--cf-green)', marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                      <Flame size={16} /> {memberProfileData.stats.currentStreak}d
-                    </p>
-                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Max: {memberProfileData.stats.maxStreak}d</span>
-                  </div>
-
-                  <div className="glass" style={{ padding: 14, borderRadius: 8, textAlign: 'center' }}>
-                    <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>DIFFICULTY</span>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>
-                      <span style={{ color: 'var(--cf-green)' }}>{memberProfileData.stats.easyCount}E</span> · <span style={{ color: 'var(--lc-yellow)' }}>{memberProfileData.stats.mediumCount}M</span> · <span style={{ color: 'var(--cf-red)' }}>{memberProfileData.stats.hardCount}H</span>
-                    </p>
-                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Breakdown</span>
-                  </div>
-                </div>
-
-                {/* Topic Roadmap Progress */}
-                {memberProfileData.roadmapSummaries && memberProfileData.roadmapSummaries.length > 0 && (
-                  <div className="glass" style={{ borderRadius: 8, padding: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                      <Map size={15} style={{ color: 'var(--accent)' }} />
-                      <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Topic Roadmap Progress</h4>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {memberProfileData.roadmapSummaries.map(rm => (
-                        <div key={rm.title} style={{ background: 'var(--bg-base)', padding: '8px 12px', borderRadius: 6 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
-                            <span>{rm.title}</span>
-                            <span style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>{rm.solvedCount}/{rm.totalProblems} ({rm.percent}%)</span>
-                          </div>
-                          <div className="progress-bar" style={{ height: 5, background: 'var(--bg-muted)' }}>
-                            <div className="progress-fill" style={{ width: `${rm.percent}%`, background: 'var(--accent)' }} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Earned Achievements / Badges */}
-                {memberProfileData.badges && memberProfileData.badges.length > 0 && (
-                  <div className="glass" style={{ borderRadius: 8, padding: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                      <Award size={15} style={{ color: 'var(--accent)' }} />
-                      <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Earned Achievements ({memberProfileData.badges.length})</h4>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8 }}>
-                      {memberProfileData.badges.map(b => (
-                        <div key={b.id || b.name} style={{ background: 'var(--bg-base)', padding: '8px 10px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 20 }}>{b.icon || '🏆'}</span>
-                          <div>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{b.name}</div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.2 }}>{b.description}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Unable to display member profile.</p>
-            )}
+              ) : (
+                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Unable to display member profile.</p>
+              )}
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal: Create Group */}
-      {modalType === 'create' && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div className="glass animate-fade-in" style={{ borderRadius: 10, width: '100%', maxWidth: 420, padding: 24, background: 'var(--bg-surface)' }}>
+      {modalType === 'create' && createPortal(
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(6, 9, 26, 0.45)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="glass animate-fade-in" style={{ borderRadius: 10, width: '100%', maxWidth: 420, padding: 24, background: 'var(--bg-surface)', boxShadow: '0 20px 50px rgba(0,0,0,0.6)', border: '1px solid var(--border-hover)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Create New Study Group</h3>
               <button onClick={() => setModalType('none')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={16} /></button>
@@ -590,13 +576,14 @@ export default function GroupsView({ token, showPopup }) {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal: Join Group */}
-      {modalType === 'join' && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div className="glass animate-fade-in" style={{ borderRadius: 10, width: '100%', maxWidth: 420, padding: 24, background: 'var(--bg-surface)' }}>
+      {modalType === 'join' && createPortal(
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(6, 9, 26, 0.45)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="glass animate-fade-in" style={{ borderRadius: 10, width: '100%', maxWidth: 420, padding: 24, background: 'var(--bg-surface)', boxShadow: '0 20px 50px rgba(0,0,0,0.6)', border: '1px solid var(--border-hover)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Join Study Group</h3>
               <button onClick={() => setModalType('none')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={16} /></button>
@@ -626,7 +613,8 @@ export default function GroupsView({ token, showPopup }) {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
