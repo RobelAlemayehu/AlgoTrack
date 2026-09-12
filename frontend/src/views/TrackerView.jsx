@@ -44,7 +44,7 @@ export default function TrackerView({ problems, lastSyncTime, onSync, searchQuer
   const [difficulty, setDifficulty] = useState('All');
   const [tagFilter,  setTagFilter]  = useState('');
   const [page, setPage] = useState(1);
-  const [sort, setSort] = useState({ key: 'syncedAt', dir: 'desc' });
+  const [sort, setSort] = useState({ key: 'solvedAt', dir: 'desc' });
 
   const safe = Array.isArray(problems) ? problems : [];
 
@@ -74,9 +74,9 @@ export default function TrackerView({ problems, lastSyncTime, onSync, searchQuer
     }
 
     list.sort((a, b) => {
-      if (sort.key === 'syncedAt') {
-        const da = new Date(a.syncedAt || a.createdAt);
-        const db = new Date(b.syncedAt || b.createdAt);
+      if (sort.key === 'syncedAt' || sort.key === 'solvedAt') {
+        const da = new Date(a.solvedAt || a.syncedAt || a.createdAt);
+        const db = new Date(b.solvedAt || b.syncedAt || b.createdAt);
         return sort.dir === 'desc' ? db - da : da - db;
       }
       if (sort.key === 'title') {
@@ -179,8 +179,8 @@ export default function TrackerView({ problems, lastSyncTime, onSync, searchQuer
               <th>Platform</th>
               <th>Rating / Difficulty</th>
               <th className="col-tags">Tags</th>
-              <th onClick={() => toggleSort('syncedAt')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                Solved {sort.key === 'syncedAt' ? (sort.dir === 'asc' ? '↑' : '↓') : ''}
+              <th onClick={() => toggleSort('solvedAt')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Solved {sort.key === 'solvedAt' || sort.key === 'syncedAt' ? (sort.dir === 'asc' ? '↑' : '↓') : ''}
               </th>
               <th style={{ textAlign: 'center' }}>Spaced Review</th>
             </tr>
@@ -231,7 +231,7 @@ export default function TrackerView({ problems, lastSyncTime, onSync, searchQuer
                   </div>
                 </td>
                 <td style={{ color: 'var(--text-muted)', fontSize: 11, fontFamily: 'var(--font-mono)' }}>
-                  {timeAgo(p.syncedAt || p.createdAt)}
+                  {timeAgo(p.solvedAt || p.syncedAt || p.createdAt)}
                 </td>
                 <td style={{ textAlign: 'center' }}>
                   <button

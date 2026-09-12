@@ -313,7 +313,8 @@ const syncLeetCode = async (req, res) => {
       ];
 
       let itemIdx = 0;
-      Object.entries(lcCalendar).forEach(([ts, count]) => {
+      const calendarEntries = Object.entries(lcCalendar).sort((a, b) => Number(b[0]) - Number(a[0]));
+      calendarEntries.forEach(([ts, count]) => {
         const numTs = Number(ts);
         if (!isNaN(numTs) && numTs > 0 && count > 0) {
           for (let i = 0; i < count; i++) {
@@ -390,20 +391,32 @@ const syncLeetCode = async (req, res) => {
         ? known.tags
         : (sub.topicTags || sub.tags || []);
 
+      const solveTs = sub.timestamp
+        ? (Number(sub.timestamp) > 1e9 ? Number(sub.timestamp) * 1000 : new Date(sub.timestamp).getTime())
+        : null;
+
+      const updateFields = {
+        userId: req.user.id,
+        problemId: sub.titleSlug,
+        title: sub.title,
+        platform: 'LeetCode',
+        difficulty: diff,
+        tags: tags,
+        archived: false,
+        syncedAt: new Date()
+      };
+
+      if (solveTs && !isNaN(solveTs) && solveTs > 0) {
+        updateFields.solvedAt = new Date(solveTs);
+      }
+
       return {
         updateOne: {
           filter: { problemId: sub.titleSlug, userId: req.user.id },
           update: {
-            $set: {
-              userId: req.user.id,
-              problemId: sub.titleSlug,
-              title: sub.title,
-              platform: 'LeetCode',
-              difficulty: diff,
-              tags: tags,
-              archived: false,
-              solvedAt: sub.timestamp ? new Date(parseInt(sub.timestamp) * 1000) : new Date(),
-              syncedAt: new Date()
+            $set: updateFields,
+            $setOnInsert: {
+              solvedAt: (solveTs && !isNaN(solveTs) && solveTs > 0) ? new Date(solveTs) : new Date()
             }
           },
           upsert: true
