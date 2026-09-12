@@ -55,11 +55,11 @@ export default function CustomSelect({ value, options, onChange, placeholder = '
             top: 'calc(100% + 4px)',
             left: 0,
             right: 0,
-            zIndex: 100,
+            zIndex: 1000,
             background: 'var(--bg-surface)',
             border: '1px solid var(--border)',
             borderRadius: 6,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.6)',
             overflow: 'hidden',
             maxHeight: 220,
             overflowY: 'auto'

@@ -124,26 +124,14 @@ const getProblems = async (req, res) => {
     for (let i = 0; i < medCount; i++) diffPool.push('Medium');
     for (let i = 0; i < hardCount; i++) diffPool.push('Hard');
 
-    const popularTitles = [
-      'Two Sum', 'Add Two Numbers', 'Longest Substring Without Repeating Characters',
-      'Median of Two Sorted Arrays', 'Longest Palindromic Substring', 'Container With Most Water',
-      '3Sum', 'Valid Parentheses', 'Merge Two Sorted Lists', 'Generate Parentheses',
-      'Search in Rotated Sorted Array', 'Group Anagrams', 'Maximum Subarray', 'Merge Intervals',
-      'Unique Paths', 'Climbing Stairs', 'Edit Distance', 'Word Search', 'Best Time to Buy and Sell Stock',
-      'Binary Tree Level Order Traversal', 'Valid Palindrome', 'Longest Consecutive Sequence',
-      'Single Number', 'LRU Cache', 'Number of Islands', 'Course Schedule', 'Invert Binary Tree',
-      'Kth Smallest Element in a BST', 'Lowest Common Ancestor of a Binary Tree', 'Product of Array Except Self',
-      'Valid Anagram', 'Longest Increasing Subsequence', 'Coin Change', 'Counting Bits',
-      'Top K Frequent Elements', 'Subarray Sum Equals K', 'Daily Temperatures'
-    ];
-
     problems.forEach((p, idx) => {
       let titleChanged = false;
       let diffChanged = false;
 
       if (!p.title || p.title.startsWith('LeetCode Solved Problem')) {
-        const assignedTitle = popularTitles[idx % popularTitles.length];
-        p.title = assignedTitle;
+        const dateStr = p.solvedAt ? new Date(p.solvedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+        p.title = `Unidentified LeetCode Solve${dateStr ? ` (${dateStr})` : ''}`;
+        p.unverified = true;
         titleChanged = true;
       }
 
@@ -154,7 +142,7 @@ const getProblems = async (req, res) => {
       }
 
       if (titleChanged || diffChanged) {
-        Problem.updateOne({ _id: p._id }, { $set: { title: p.title, difficulty: p.difficulty } }).catch(() => {});
+        Problem.updateOne({ _id: p._id }, { $set: { title: p.title, difficulty: p.difficulty, unverified: p.unverified } }).catch(() => {});
       }
     });
 

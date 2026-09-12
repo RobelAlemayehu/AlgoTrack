@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Lock, Mail, Save, Key, CheckCircle2, AlertCircle, RefreshCw, ExternalLink, ShieldAlert } from 'lucide-react';
+import ShareProfileCard from '../components/ShareProfileCard';
 
 const API = import.meta.env.VITE_API || 'https://algotrack-1.onrender.com';
 
@@ -17,7 +18,7 @@ const extractUsername = (input, platform) => {
   } catch { return clean; }
 };
 
-export default function ProfileView({ userSettings, setUserSettings, token, showPopup, onDataRefresh }) {
+export default function ProfileView({ userSettings, setUserSettings, token, showPopup, onDataRefresh, user, totalSolved, lcStats, problems, streak }) {
   const [profile, setProfile] = useState(null);
   const [username, setUsername] = useState('');
   const [handlesForm, setHandlesForm] = useState({ leetcodeHandle: '', codeforcesHandle: '' });
@@ -375,6 +376,17 @@ export default function ProfileView({ userSettings, setUserSettings, token, show
           </div>
         </form>
       </div>
+
+      {/* Shareable Profile Card */}
+      <ShareProfileCard
+        user={profile || user}
+        totalSolved={totalSolved}
+        lcCount={(problems || []).filter(p => !p.archived && p.platform === 'LeetCode').length}
+        cfCount={(problems || []).filter(p => !p.archived && p.platform === 'Codeforces').length}
+        streak={streak}
+        badgesCount={profile?.badges?.length || (totalSolved > 50 ? 3 : totalSolved > 10 ? 2 : 1)}
+        showPopup={showPopup}
+      />
 
       {/* Safer Handle Confirmation Modal */}
       {showConfirmModal && (

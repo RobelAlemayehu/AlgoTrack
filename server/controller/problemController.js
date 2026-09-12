@@ -1,5 +1,35 @@
 const Problem = require('../models/Problem');
 
+// Add manual problem record
+exports.addManualProblem = async (req, res) => {
+    try {
+        const { title, platform, difficulty, tags, explanation, codeImplementation } = req.body;
+        if (!title) return res.status(400).json({ error: 'Title is required' });
+
+        const problemId = `manual-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+        const newProblem = new Problem({
+            userId: req.user.id,
+            problemId,
+            title,
+            platform: platform || 'Custom',
+            difficulty: difficulty || 'Medium',
+            tags: Array.isArray(tags) ? tags : [],
+            explanation: explanation || '',
+            codeImplementation: codeImplementation || '',
+            solvedAt: new Date(),
+            syncedAt: new Date(),
+            source: 'manual',
+            unverified: false
+        });
+
+        await newProblem.save();
+        res.status(201).json(newProblem);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
 // Get notes grouped by category (excluding archived)
 exports.getNotesByCategory = async (req, res) => {
     try {
@@ -75,13 +105,14 @@ exports.exportProblemData = async (req, res) => {
         const problems = await Problem.find({ userId: req.user.id, archived: { $ne: true } }).lean();
 
         if (format === 'csv') {
-            const headers = ['Title', 'Platform', 'Problem ID', 'Difficulty', 'Category', 'Synced At', 'Explanation'];
+            const headers = ['Title', 'Platform', 'Problem ID', 'Difficulty', 'Category', 'Solved At', 'Synced At', 'Explanation'];
             const rows = problems.map(p => [
                 `"${(p.title || '').replace(/"/g, '""')}"`,
                 `"${p.platform}"`,
                 `"${p.problemId || ''}"`,
                 `"${p.difficulty}"`,
                 `"${p.category || ''}"`,
+                `"${p.solvedAt ? new Date(p.solvedAt).toISOString() : ''}"`,
                 `"${p.syncedAt ? new Date(p.syncedAt).toISOString() : ''}"`,
                 `"${(p.explanation || '').replace(/"/g, '""')}"`
             ]);

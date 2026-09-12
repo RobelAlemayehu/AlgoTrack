@@ -4,6 +4,7 @@ import './index.css';
 import Popup        from './components/ui/Popup';
 import Sidebar      from './components/layout/Sidebar';
 import Header       from './components/layout/Header';
+import ToastContainer from './components/ToastContainer';
 
 import AuthView      from './views/AuthView';
 import DashboardView from './views/DashboardView';
@@ -273,7 +274,7 @@ export default function App() {
           return d;
         })
       );
-      await Promise.all(reqs);
+      await Promise.allSettled(reqs);
       await fetchData();
       setLastSyncTime(new Date());
       showPopup('Sync Complete!', `Data updated successfully.`, 'success');
@@ -338,7 +339,7 @@ export default function App() {
       case 'Compare':
         return <CompareView token={token} />;
       case 'Profile':
-        return <ProfileView userSettings={userSettings} setUserSettings={setUserSettings} token={token} showPopup={showPopup} onDataRefresh={fetchData} />;
+        return <ProfileView userSettings={userSettings} setUserSettings={setUserSettings} token={token} showPopup={showPopup} onDataRefresh={fetchData} user={user} totalSolved={totalSolved} lcStats={lcStats} problems={problems} streak={streak} />;
       default:
         return null;
     }
@@ -381,6 +382,10 @@ export default function App() {
       </div>
 
       <Popup {...popup} onClose={closePopup} />
+      <ToastContainer
+        toasts={notifications.map(n => ({ id: n.id, title: 'Streak Warning', message: n.text, type: 'streak' }))}
+        onCloseToast={id => setNotifications(prev => prev.filter(x => x.id !== id))}
+      />
     </div>
   );
 }

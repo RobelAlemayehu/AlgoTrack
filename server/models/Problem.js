@@ -83,6 +83,15 @@ const problemSchema = new mongoose.Schema({
     archivedAt: {
         type: Date,
         default: null
+    },
+    unverified: {
+        type: Boolean,
+        default: false
+    },
+    source: {
+        type: String,
+        enum: ['sync', 'manual'],
+        default: 'sync'
     }
 },
     { timestamps: true }

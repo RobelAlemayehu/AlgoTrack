@@ -2,16 +2,19 @@ const Problem = require('../models/Problem');
 
 exports.updateNote = async (req, res) => {
     try {
-        const { explanation, codeImplementation, codeImplmentation, complexity, category, usefulResources } = req.body;
+        const { explanation, codeImplementation, codeImplmentation, complexity, category, usefulResources, status } = req.body;
 
         // Handle the historical typo — accept either spelling
         const code = codeImplementation || codeImplmentation || '';
 
-        // Normalize complexity — accept string ("Time: O(n), Space: O(1)") or object
-        let normalizedComplexity = { time: '', space: '' };
-        if (complexity) {
+        const updateData = { lastUpdated: new Date() };
+        if (explanation !== undefined) updateData.explanation = explanation;
+        if (code || codeImplementation !== undefined || codeImplmentation !== undefined) {
+            updateData.codeImplementation = code;
+        }
+        if (complexity !== undefined) {
+            let normalizedComplexity = { time: '', space: '' };
             if (typeof complexity === 'string') {
-                // Try to parse "Time: O(n)\nSpace: O(1)" or just store raw
                 const timeMatch = complexity.match(/time[:\s]+([^\n]+)/i);
                 const spaceMatch = complexity.match(/space[:\s]+([^\n]+)/i);
                 normalizedComplexity = {
@@ -24,20 +27,15 @@ exports.updateNote = async (req, res) => {
                     space: complexity.space || ''
                 };
             }
+            updateData.complexity = normalizedComplexity;
         }
+        if (category !== undefined) updateData.category = category;
+        if (usefulResources !== undefined) updateData.usefulResource = usefulResources;
+        if (status !== undefined) updateData.status = status;
 
         const updatedProblem = await Problem.findOneAndUpdate(
             { _id: req.params.id, userId: req.user.id },
-            {
-                $set: {
-                    explanation: explanation || '',
-                    codeImplementation: code,
-                    complexity: normalizedComplexity,
-                    category: category || 'General',
-                    usefulResource: usefulResources || [],
-                    lastUpdated: new Date()
-                }
-            },
+            { $set: updateData },
             { new: true, upsert: false }
         );
 
@@ -51,7 +49,7 @@ exports.updateNote = async (req, res) => {
 
 exports.getNotes = async (req, res) => {
     try {
-        const problems = await Problem.find({ userId: req.user.id }).sort({ syncedAt: -1 });
+        const problems = await Problem.find({ userId: req.user.id, archived: { $ne: true } }).sort({ solvedAt: -1, syncedAt: -1 });
         res.json(problems);
     } catch (err) {
         res.status(500).json({ error: err.message });

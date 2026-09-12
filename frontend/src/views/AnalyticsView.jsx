@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import WeaknessPracticePlan from '../components/WeaknessPracticePlan';
 
 function StatMini({ label, value, sub, color }) {
   return (
@@ -335,6 +336,9 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
           })}
         </div>
       </div>
+
+      {/* Weakness-Based Practice Plan */}
+      <WeaknessPracticePlan problems={problems} />
     </div>
   );
 }

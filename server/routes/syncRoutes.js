@@ -5,7 +5,7 @@ const axios = require('axios');
 
 const { syncCodeforces, getProblems } = require('../controller/codeforcesController');
 const { syncLeetCode }                 = require('../controller/leetCodeController');
-const { resetProblems, getArchivedProblems, restoreArchivedProblems, exportProblemData } = require('../controller/problemController');
+const { resetProblems, getArchivedProblems, restoreArchivedProblems, exportProblemData, addManualProblem } = require('../controller/problemController');
 const { compareUsers }                 = require('../controller/compareController');
 const { getRecommendations }           = require('../controller/recommendController');
 const { getUpcomingContests }          = require('../controller/contestController');
@@ -17,6 +17,7 @@ const { calculateStreak } = require('../utils/streak');
 
 router.get('/codeforces', auth, syncCodeforces);
 router.post('/leetcode',  auth, syncLeetCode);
+router.post('/manual',    auth, addManualProblem);
 router.get('/all',        auth, getProblems);
 router.get('/streak',     auth, async (req, res) => {
   try {

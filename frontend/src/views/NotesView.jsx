@@ -30,7 +30,7 @@ export default function NotesView({ problems, onUpdateNote }) {
   const [form, setForm] = useState({ explanation: '', code: '', timeComplexity: '', spaceComplexity: '' });
 
   const safe = Array.isArray(problems) ? problems : [];
-  const sorted = [...safe].sort((a, b) => new Date(b.syncedAt || b.createdAt) - new Date(a.syncedAt || a.createdAt));
+  const sorted = [...safe].sort((a, b) => new Date(b.solvedAt || b.syncedAt || b.createdAt) - new Date(a.solvedAt || a.syncedAt || a.createdAt));
 
   const filtered = sorted.filter(p =>
     p.title?.toLowerCase().includes(search.toLowerCase()) ||

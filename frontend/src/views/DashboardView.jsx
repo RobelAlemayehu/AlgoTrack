@@ -168,8 +168,8 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
         </div>
       </div>
 
-      {/* 4-Stat Rail */}
-      <div className="grid-stats-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+      {/* 5-Stat Rail */}
+      <div className="grid-stats-5" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
         <div className="glass" style={{ borderRadius: 6, padding: '14px 16px' }}>
           <p style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginBottom: 6 }}>TOTAL SOLVED</p>
           <div className="stat-value" style={{ color: 'var(--text-primary)' }}>{totalSolved}</div>
@@ -187,6 +187,13 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
           <div className="stat-value" style={{ color: streak > 0 ? 'var(--cf-green)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
             <Flame size={18} style={{ color: streak > 0 ? 'var(--accent)' : 'var(--text-muted)' }} />
             {streak}d
+          </div>
+        </div>
+        <div className="glass" style={{ borderRadius: 6, padding: '14px 16px' }}>
+          <p style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginBottom: 6 }}>TIME THIS WEEK</p>
+          <div className="stat-value" style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 4, fontSize: 18 }}>
+            <Clock size={16} />
+            {Math.max(1, Math.round(thisWeekCount * 0.5))}h
           </div>
         </div>
       </div>
@@ -232,7 +239,19 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
                 {recent.map(p => (
                   <tr key={p._id || p.id}>
                     <td>
-                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.title}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.title}</span>
+                        {p.unverified && (
+                          <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'var(--bg-muted)', color: 'var(--text-muted)', border: '1px solid var(--border)', fontFamily: 'var(--font-mono)' }}>
+                            Unverified
+                          </span>
+                        )}
+                        {p.source === 'manual' && (
+                          <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid rgba(240,136,62,0.3)', fontFamily: 'var(--font-mono)' }}>
+                            Manual
+                          </span>
+                        )}
+                      </div>
                       {p.tags && p.tags.length > 0 && (
                         <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
                           {p.tags.slice(0, 2).join(' · ')}
@@ -279,7 +298,7 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
             </div>
 
             {editingTarget ? (
-              <div style={{ display: 'flex', gap: 6, marginBottom: 10, alignItems: 'center' }}>
+              <div style={{ position: 'relative', zIndex: 100, display: 'flex', gap: 6, marginBottom: 10, alignItems: 'center' }}>
                 <CustomSelect
                   value={userTarget}
                   options={[
@@ -290,9 +309,14 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
                     { value: 15, label: 'Target: 15 problems/week' },
                     { value: 20, label: 'Target: 20 problems/week' }
                   ]}
-                  onChange={val => handleSaveTarget(val)}
+                  onChange={val => setUserTarget(val)}
                 />
-                <button className="btn-ghost" onClick={() => setEditingTarget(false)} style={{ fontSize: 11, padding: '6px 10px', height: 30, flexShrink: 0 }}>Cancel</button>
+                <button className="btn-primary" onClick={() => handleSaveTarget(userTarget)} style={{ fontSize: 11, padding: '5px 10px', height: 30, flexShrink: 0 }}>
+                  Save
+                </button>
+                <button className="btn-ghost" onClick={() => setEditingTarget(false)} style={{ fontSize: 11, padding: '5px 10px', height: 30, flexShrink: 0 }}>
+                  Cancel
+                </button>
               </div>
             ) : null}
 

@@ -318,15 +318,15 @@ const syncLeetCode = async (req, res) => {
         const numTs = Number(ts);
         if (!isNaN(numTs) && numTs > 0 && count > 0) {
           for (let i = 0; i < count; i++) {
-            const tmpl = popularLCProblems[itemIdx % popularLCProblems.length];
-            itemIdx++;
-            const slug = `${tmpl.slug}-${numTs}-${i}`;
+            const dateStr = new Date(numTs * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const slug = `lc-solve-${numTs}-${i}`;
             uniqueSubs.push({
               id: slug,
-              title: tmpl.title,
+              title: `Unidentified LeetCode Solve (${dateStr})`,
               titleSlug: slug,
-              difficulty: tmpl.diff,
-              timestamp: numTs
+              difficulty: 'Medium',
+              timestamp: numTs,
+              unverified: true
             });
           }
         }
