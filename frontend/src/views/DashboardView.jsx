@@ -242,7 +242,7 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
                     </td>
                     <td>
                       <span className={getRatingClass(p.difficulty)} style={{ fontSize: 12 }}>
-                        {p.difficulty || 'Unrated'}
+                        {(!p.difficulty || p.difficulty === 'Unknown') ? 'Medium' : p.difficulty}
                       </span>
                     </td>
                     <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>

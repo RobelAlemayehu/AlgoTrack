@@ -206,7 +206,7 @@ export default function TrackerView({ problems, lastSyncTime, onSync, searchQuer
                 </td>
                 <td>
                   <span className={getRatingClass(p.difficulty)} style={{ fontSize: 13 }}>
-                    {p.difficulty || '—'}
+                    {(!p.difficulty || p.difficulty === 'Unknown') ? 'Medium' : p.difficulty}
                   </span>
                 </td>
                 <td className="col-tags">

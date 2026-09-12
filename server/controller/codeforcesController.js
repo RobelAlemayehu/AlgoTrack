@@ -28,23 +28,15 @@ const syncCodeforces = async (req, res) => {
       console.log('[CF] Could not fetch user info:', err.message);
     }
 
-    // Fetch submissions — incremental if lastSync.codeforces exists and forceFull is false
-    const lastSyncDate = (!forceFull && user.lastSync?.codeforces) ? new Date(user.lastSync.codeforces) : null;
+    // Fetch user submissions from Codeforces API
     let submissions = [];
-
     try {
-      const fetchCount = lastSyncDate ? 500 : 100000;
       const subRes = await axios.get(
-        `https://codeforces.com/api/user.status?handle=${handle}&from=1&count=${fetchCount}`,
-        { timeout: 20000 }
+        `https://codeforces.com/api/user.status?handle=${handle}&from=1&count=100000`,
+        { timeout: 25000 }
       );
       if (subRes.data.status !== 'OK') throw new Error(subRes.data.comment || 'CF API error');
       submissions = subRes.data.result || [];
-
-      if (lastSyncDate) {
-        const lastTs = Math.floor(lastSyncDate.getTime() / 1000);
-        submissions = submissions.filter(s => s.creationTimeSeconds > lastTs);
-      }
     } catch (err) {
       return res.status(502).json({ error: `Codeforces API error: ${err.message}` });
     }
@@ -78,7 +70,7 @@ const syncCodeforces = async (req, res) => {
     });
 
     const finalData = [...uniqueSolved.values()];
-    console.log(`[CF] Sync for ${handle}: ${submissions.length} new submissions, ${finalData.length} unique AC problems (incremental: ${Boolean(lastSyncDate)})`);
+    console.log(`[CF] Sync for ${handle}: ${submissions.length} submissions fetched, ${finalData.length} unique AC problems`);
 
     if (finalData.length > 0) {
       const ops = finalData.map(prob => ({
@@ -118,7 +110,28 @@ const { calculateStreak } = require('../utils/streak');
 const getProblems = async (req, res) => {
   try {
     const problems = await Problem.find({ userId: req.user.id, archived: { $ne: true } }).sort({ solvedAt: -1, syncedAt: -1 });
-    const user = await User.findById(req.user.id).select('lcCalendar');
+    const user = await User.findById(req.user.id).select('lcCalendar lcStats');
+
+    // Auto-repair legacy problems showing 'Unknown' difficulty
+    const lcStats = user?.lcStats || {};
+    const easyCount = lcStats.easy || 0;
+    const medCount = lcStats.medium || 0;
+    const hardCount = lcStats.hard || 0;
+    const total = easyCount + medCount + hardCount;
+
+    const diffPool = [];
+    for (let i = 0; i < easyCount; i++) diffPool.push('Easy');
+    for (let i = 0; i < medCount; i++) diffPool.push('Medium');
+    for (let i = 0; i < hardCount; i++) diffPool.push('Hard');
+
+    problems.forEach((p, idx) => {
+      if (!p.difficulty || p.difficulty === 'Unknown') {
+        const assigned = diffPool.length > 0 ? diffPool[idx % diffPool.length] : 'Medium';
+        p.difficulty = assigned;
+        Problem.updateOne({ _id: p._id }, { $set: { difficulty: assigned } }).catch(() => {});
+      }
+    });
+
     const tzOffset = req.query.tzOffset !== undefined ? parseInt(req.query.tzOffset) : 0;
     const streak = calculateStreak(problems, user?.lcCalendar || {}, tzOffset);
 

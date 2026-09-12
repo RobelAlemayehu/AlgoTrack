@@ -270,7 +270,6 @@ export default function App() {
           body: JSON.stringify({ handle: userSettings.leetcodeHandle })
         }).then(r => r.json()).then(d => {
           if (d.lcStats)    setLcStats(d.lcStats);
-          fetchData();
           return d;
         })
       );
