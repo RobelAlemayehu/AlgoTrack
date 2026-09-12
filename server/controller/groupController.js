@@ -256,3 +256,107 @@ exports.getGroupLeaderboard = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// GET /api/groups/:groupId/member/:memberId - Detailed profile of a group member
+exports.getGroupMemberProfile = async (req, res) => {
+  try {
+    const { groupId, memberId } = req.params;
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+
+    // Ensure requesting user is a member of the group
+    if (!group.members.some(m => m.toString() === req.user.id)) {
+      return res.status(403).json({ error: 'Access denied. You are not a member of this study group.' });
+    }
+
+    // Ensure target member is in the group
+    if (!group.members.some(m => m.toString() === memberId)) {
+      return res.status(404).json({ error: 'Member is not in this group.' });
+    }
+
+    const member = await User.findById(memberId);
+    if (!member) {
+      return res.status(404).json({ error: 'Member user not found.' });
+    }
+
+    const problems = await Problem.find({
+      userId: member._id,
+      archived: { $ne: true }
+    });
+
+    const lcSolved = problems.filter(p => p.platform === 'LeetCode');
+    const cfSolved = problems.filter(p => p.platform === 'Codeforces');
+    const otherSolved = problems.filter(p => p.platform !== 'LeetCode' && p.platform !== 'Codeforces');
+
+    const lcCount = Math.max(member.lcStats?.total || 0, lcSolved.length);
+    const cfCount = cfSolved.length;
+    const otherCount = otherSolved.length;
+    const totalSolved = lcCount + cfCount + otherCount;
+
+    let easyCount = 0, mediumCount = 0, hardCount = 0;
+    problems.forEach(p => {
+      const diff = (p.difficulty || '').toLowerCase();
+      if (diff === 'easy' || parseInt(diff) < 1200) easyCount++;
+      else if (diff === 'medium' || (parseInt(diff) >= 1200 && parseInt(diff) < 1700)) mediumCount++;
+      else if (diff === 'hard' || parseInt(diff) >= 1700) hardCount++;
+    });
+
+    const { currentStreak, maxStreak } = calcStreak(problems, member.lcCalendar);
+
+    // Fetch roadmap progress
+    const UserRoadmapProgress = require('../models/UserRoadmapProgress');
+    const Roadmap = require('../models/Roadmap');
+    const roadmapsProgress = await UserRoadmapProgress.find({ userId: member._id });
+    const roadmapSummaries = [];
+
+    for (const rp of roadmapsProgress) {
+      const rm = await Roadmap.findById(rp.roadmapId);
+      if (rm) {
+        const solvedCount = problems.filter(p => rm.problems.some(rmP => (rmP.problemId || '').toLowerCase() === (p.problemId || '').toLowerCase())).length;
+        roadmapSummaries.push({
+          title: rm.title,
+          totalProblems: rm.problems.length,
+          solvedCount,
+          percent: Math.round((solvedCount / (rm.problems.length || 1)) * 100)
+        });
+      }
+    }
+
+    const memberProfile = {
+      _id: member._id,
+      username: member.username,
+      profilePic: member.profilePic || '',
+      cfRating: member.cfRating || 0,
+      cfMaxRating: member.cfMaxRating || 0,
+      cfRank: member.cfRank || '',
+      publicSlug: member.publicProfile?.slug || member.username.toLowerCase(),
+      handles: {
+        leetcode: member.handles?.leetcode || '',
+        codeforces: member.handles?.codeforces || ''
+      },
+      stats: {
+        totalSolved,
+        lcCount,
+        cfCount,
+        otherCount,
+        easyCount,
+        mediumCount,
+        hardCount,
+        currentStreak,
+        maxStreak
+      },
+      badges: member.badges || [],
+      roadmapSummaries,
+      createdAt: member.createdAt
+    };
+
+    res.json({ memberProfile });
+
+  } catch (err) {
+    console.error('getGroupMemberProfile Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+};

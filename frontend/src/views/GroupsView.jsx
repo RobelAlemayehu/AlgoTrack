@@ -1,7 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, UserPlus, Copy, LogOut, Flame, Trophy, CheckCircle2, AlertCircle, RefreshCw, X, Shield, Sparkles, Map } from 'lucide-react';
+import { Users, Plus, UserPlus, Copy, LogOut, Flame, Trophy, CheckCircle2, AlertCircle, RefreshCw, X, ShieldCheck, Eye, ExternalLink, Award, Map, ChevronRight } from 'lucide-react';
 
 const API = import.meta.env.VITE_API || 'http://localhost:5000';
+
+function getRankColor(rank) {
+  if (!rank) return '#808080';
+  const r = rank.toLowerCase();
+  if (r.includes('candidate master')) return '#a0a';
+  if (r.includes('master')) return '#ff8c00';
+  if (r.includes('grandmaster')) return '#f00';
+  if (r.includes('expert')) return '#0000ff';
+  if (r.includes('specialist')) return '#03a89e';
+  if (r.includes('pupil')) return '#008000';
+  if (r.includes('newbie')) return '#808080';
+  return 'var(--accent)';
+}
 
 export default function GroupsView({ token, showPopup }) {
   const [groups, setGroups] = useState([]);
@@ -11,11 +24,16 @@ export default function GroupsView({ token, showPopup }) {
   const [loading, setLoading] = useState(false);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
-  // Modal State
+  // Modal States
   const [modalType, setModalType] = useState('none'); // 'none' | 'create' | 'join'
   const [createName, setCreateName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Member Profile Modal State
+  const [selectedMemberId, setSelectedMemberId] = useState(null);
+  const [memberProfileData, setMemberProfileData] = useState(null);
+  const [memberProfileLoading, setMemberProfileLoading] = useState(false);
 
   // Fetch user groups
   const fetchUserGroups = async () => {
@@ -66,6 +84,28 @@ export default function GroupsView({ token, showPopup }) {
 
     fetchLeaderboard();
   }, [selectedGroupId, windowType, token]);
+
+  const handleOpenMemberProfile = async (memberId) => {
+    if (!selectedGroupId || !token) return;
+    setSelectedMemberId(memberId);
+    setMemberProfileData(null);
+    setMemberProfileLoading(true);
+    try {
+      const res = await fetch(`${API}/api/groups/${selectedGroupId}/member/${memberId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMemberProfileData(data.memberProfile);
+      } else {
+        showPopup?.('Error', 'Unable to fetch member profile details.', 'error');
+      }
+    } catch (err) {
+      console.error('Fetch member profile error:', err);
+    } finally {
+      setMemberProfileLoading(false);
+    }
+  };
 
   const handleCreateGroup = async (e) => {
     e.preventDefault();
@@ -156,7 +196,7 @@ export default function GroupsView({ token, showPopup }) {
             Study Groups &amp; Leaderboards
           </h1>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>
-            Form private practice circles, share invite codes, and track live solve velocity
+            Form private practice circles, share invite codes, and click any member to view full profile details
           </p>
         </div>
 
@@ -284,7 +324,7 @@ export default function GroupsView({ token, showPopup }) {
                   <thead>
                     <tr style={{ background: 'var(--bg-surface)', textAlign: 'left', fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
                       <th style={{ padding: '12px 16px', width: 60 }}>RANK</th>
-                      <th style={{ padding: '12px 16px' }}>MEMBER</th>
+                      <th style={{ padding: '12px 16px' }}>MEMBER (CLICK TO VIEW PROFILE)</th>
                       <th style={{ padding: '12px 16px' }}>DISTINCT SOLVED</th>
                       <th style={{ padding: '12px 16px' }}>STREAK</th>
                       <th style={{ padding: '12px 16px' }}>WEEKLY GOAL</th>
@@ -294,7 +334,16 @@ export default function GroupsView({ token, showPopup }) {
                     {leaderboardData.leaderboard.map((entry, idx) => {
                       const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
                       return (
-                        <tr key={entry.userId} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <tr
+                          key={entry.userId}
+                          onClick={() => handleOpenMemberProfile(entry.userId)}
+                          title="Click to view detailed member profile"
+                          style={{
+                            borderBottom: '1px solid var(--border)',
+                            cursor: 'pointer',
+                            transition: 'background 0.15s ease'
+                          }}
+                        >
                           {/* Rank */}
                           <td style={{ padding: '14px 16px', fontSize: 14, fontWeight: 700, color: idx < 3 ? 'var(--accent)' : 'var(--text-muted)' }}>
                             {medal}
@@ -302,12 +351,23 @@ export default function GroupsView({ token, showPopup }) {
 
                           {/* Member */}
                           <td style={{ padding: '14px 16px' }}>
-                            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)', marginBottom: 2 }}>
-                              {entry.username}
-                            </div>
-                            <div style={{ display: 'flex', gap: 8, fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-                              {entry.handles.leetcode && <span>LC: @{entry.handles.leetcode}</span>}
-                              {entry.handles.codeforces && <span>CF: @{entry.handles.codeforces}</span>}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{
+                                width: 28, height: 28, borderRadius: '50%', background: 'var(--accent-dim)',
+                                border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: 12, fontWeight: 800, color: 'var(--accent)'
+                              }}>
+                                {entry.username.substring(0, 2).toUpperCase()}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--accent)', textDecoration: 'underline', marginBottom: 2 }}>
+                                  {entry.username}
+                                </div>
+                                <div style={{ display: 'flex', gap: 8, fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                                  {entry.handles.leetcode && <span>LC: @{entry.handles.leetcode}</span>}
+                                  {entry.handles.codeforces && <span>CF: @{entry.handles.codeforces}</span>}
+                                </div>
+                              </div>
                             </div>
                           </td>
 
@@ -364,6 +424,137 @@ export default function GroupsView({ token, showPopup }) {
           )}
         </div>
       </div>
+
+      {/* Modal: Group Member Detailed Profile */}
+      {selectedMemberId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div className="glass animate-fade-in" style={{ borderRadius: 12, width: '100%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto', padding: 24, background: 'var(--bg-surface)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <ShieldCheck size={18} style={{ color: 'var(--accent)' }} />
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Group Member Profile</h3>
+              </div>
+              <button onClick={() => { setSelectedMemberId(null); setMemberProfileData(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {memberProfileLoading ? (
+              <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 10px', color: 'var(--accent)' }} />
+                <p style={{ fontSize: 13, fontFamily: 'var(--font-mono)' }}>Fetching member profile details…</p>
+              </div>
+            ) : memberProfileData ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {/* User Header */}
+                <div className="glass" style={{ borderRadius: 10, padding: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{
+                      width: 52, height: 52, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent) 0%, #ff5252 100%)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: '#fff'
+                    }}>
+                      {memberProfileData.username.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)' }}>{memberProfileData.username}</h2>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap', fontSize: 11, fontFamily: 'var(--font-mono)' }}>
+                        {memberProfileData.cfRank && (
+                          <span style={{ color: getRankColor(memberProfileData.cfRank), fontWeight: 700 }}>
+                            {memberProfileData.cfRank} ({memberProfileData.cfRating} max {memberProfileData.cfMaxRating})
+                          </span>
+                        )}
+                        {memberProfileData.handles.leetcode && <span style={{ color: 'var(--text-muted)' }}>LC: @{memberProfileData.handles.leetcode}</span>}
+                        {memberProfileData.handles.codeforces && <span style={{ color: 'var(--text-muted)' }}>CF: @{memberProfileData.handles.codeforces}</span>}
+                      </div>
+                    </div>
+                  </div>
+
+                  <a
+                    href={`/#/u/${encodeURIComponent(memberProfileData.publicSlug)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-primary"
+                    style={{ padding: '6px 12px', fontSize: 12, gap: 6 }}
+                  >
+                    View Portfolio <ExternalLink size={13} />
+                  </a>
+                </div>
+
+                {/* Stat Cards Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }} className="grid-stats-3">
+                  <div className="glass" style={{ padding: 14, borderRadius: 8, textAlign: 'center' }}>
+                    <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>TOTAL SOLVED</span>
+                    <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--accent)', marginTop: 2 }}>{memberProfileData.stats.totalSolved}</p>
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{memberProfileData.stats.lcCount} LC · {memberProfileData.stats.cfCount} CF</span>
+                  </div>
+
+                  <div className="glass" style={{ padding: 14, borderRadius: 8, textAlign: 'center' }}>
+                    <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>CURRENT STREAK</span>
+                    <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--cf-green)', marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                      <Flame size={16} /> {memberProfileData.stats.currentStreak}d
+                    </p>
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Max: {memberProfileData.stats.maxStreak}d</span>
+                  </div>
+
+                  <div className="glass" style={{ padding: 14, borderRadius: 8, textAlign: 'center' }}>
+                    <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>DIFFICULTY</span>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>
+                      <span style={{ color: 'var(--cf-green)' }}>{memberProfileData.stats.easyCount}E</span> · <span style={{ color: 'var(--lc-yellow)' }}>{memberProfileData.stats.mediumCount}M</span> · <span style={{ color: 'var(--cf-red)' }}>{memberProfileData.stats.hardCount}H</span>
+                    </p>
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Breakdown</span>
+                  </div>
+                </div>
+
+                {/* Topic Roadmap Progress */}
+                {memberProfileData.roadmapSummaries && memberProfileData.roadmapSummaries.length > 0 && (
+                  <div className="glass" style={{ borderRadius: 8, padding: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                      <Map size={15} style={{ color: 'var(--accent)' }} />
+                      <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Topic Roadmap Progress</h4>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {memberProfileData.roadmapSummaries.map(rm => (
+                        <div key={rm.title} style={{ background: 'var(--bg-base)', padding: '8px 12px', borderRadius: 6 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
+                            <span>{rm.title}</span>
+                            <span style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>{rm.solvedCount}/{rm.totalProblems} ({rm.percent}%)</span>
+                          </div>
+                          <div className="progress-bar" style={{ height: 5, background: 'var(--bg-muted)' }}>
+                            <div className="progress-fill" style={{ width: `${rm.percent}%`, background: 'var(--accent)' }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Earned Achievements / Badges */}
+                {memberProfileData.badges && memberProfileData.badges.length > 0 && (
+                  <div className="glass" style={{ borderRadius: 8, padding: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                      <Award size={15} style={{ color: 'var(--accent)' }} />
+                      <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Earned Achievements ({memberProfileData.badges.length})</h4>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8 }}>
+                      {memberProfileData.badges.map(b => (
+                        <div key={b.id || b.name} style={{ background: 'var(--bg-base)', padding: '8px 10px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 20 }}>{b.icon || '🏆'}</span>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{b.name}</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.2 }}>{b.description}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Unable to display member profile.</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal: Create Group */}
       {modalType === 'create' && (
