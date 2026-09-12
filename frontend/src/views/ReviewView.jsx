@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RotateCw, CheckCircle2, AlertCircle, Clock, BookOpen, ChevronRight, Zap } from 'lucide-react';
+import { RotateCw, CheckCircle2, AlertCircle, Clock, BookOpen, ChevronRight, Zap, Brain, Layers, Repeat } from 'lucide-react';
 
 const API = import.meta.env.VITE_API || 'https://algotrack-1.onrender.com';
 
@@ -119,8 +119,20 @@ export default function ReviewView({ token, showPopup, onDataRefresh }) {
 
   if (loading) {
     return (
-      <div className="view-pad animate-fade-in" style={{ padding: '28px 32px', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300 }}>
-        <RotateCw className="animate-spin" size={24} style={{ color: 'var(--accent)' }} />
+      <div className="view-pad animate-fade-in" style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: 380, gap: 20 }}>
+        <div className="spinner-glow-container">
+          <div className="spinner-outer-ring" />
+          <div className="spinner-inner-ring" />
+          <Brain size={26} style={{ color: 'var(--accent)', zIndex: 2 }} />
+        </div>
+        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+            Preparing Review Queue
+          </p>
+          <p style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+            Calculating spaced repetition intervals &amp; due problems…
+          </p>
+        </div>
       </div>
     );
   }
