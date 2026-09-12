@@ -20,7 +20,7 @@ const renderBadgeIcon = (b) => {
   return <IconComp size={14} style={{ color: 'var(--accent)' }} />;
 };
 
-const API = import.meta.env.VITE_API || 'https://algotrack-1.onrender.com';
+const API = import.meta.env.VITE_API || 'http://localhost:5000';
 
 function formatCountdown(targetTs) {
   const diff = Math.max(0, targetTs - Math.floor(Date.now() / 1000));
@@ -152,7 +152,9 @@ export default function DashboardView({ problems, streak, lcStats, totalSolved: 
 
   const recent = sorted.slice(0, 8);
 
-  // Fetch Contests, Badges, & Due Reviews
+  const [drillData, setDrillData] = useState(null);
+
+  // Fetch Contests, Badges, Due Reviews, & Weak Topic Drill
   useEffect(() => {
     if (!token) return;
 
@@ -169,6 +171,11 @@ export default function DashboardView({ problems, streak, lcStats, totalSolved: 
     fetch(`${API}/api/review/due`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => setDueReviewCount(d.dueCount || 0))
+      .catch(() => {});
+
+    fetch(`${API}/api/drills/weak-topics`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setDrillData(d))
       .catch(() => {});
   }, [token]);
 
@@ -222,6 +229,30 @@ export default function DashboardView({ problems, streak, lcStats, totalSolved: 
           </div>
         </div>
       </div>
+
+      {/* Today's Weak-Topic Drill Card */}
+      {drillData?.hasEnoughData && drillData.weakTags?.length > 0 && (
+        <div className="glass" style={{ borderRadius: 8, padding: '16px 18px', border: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Target size={16} style={{ color: 'var(--accent)' }} />
+              <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Today's Weak-Topic Drill</h2>
+            </div>
+            <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+              Diagnosis from normalized tag performance
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+            {drillData.weakTags.map((wt, i) => (
+              <div key={wt.tag} style={{ background: 'var(--bg-base)', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--accent)', fontWeight: 600 }}>#{i + 1} {wt.tag}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.3 }}>{wt.reason}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Review Alert Banner */}
       {dueReviewCount > 0 && (

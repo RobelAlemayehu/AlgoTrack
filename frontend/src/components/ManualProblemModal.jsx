@@ -3,7 +3,7 @@ import { X, Plus, Save } from 'lucide-react';
 
 import CustomSelect from './ui/CustomSelect';
 
-const API = import.meta.env.VITE_API || 'https://algotrack-1.onrender.com';
+const API = import.meta.env.VITE_API || 'http://localhost:5000';
 const PLATFORMS = ['LeetCode', 'Codeforces', 'AtCoder', 'CodeChef', 'HackerRank', 'Custom'];
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard', '800', '1200', '1600', '2000'];
 

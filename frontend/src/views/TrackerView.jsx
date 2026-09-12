@@ -4,7 +4,7 @@ import ProblemDetailModal from '../components/ProblemDetailModal';
 import ManualProblemModal from '../components/ManualProblemModal';
 import KanbanBoard from '../components/KanbanBoard';
 
-const API = import.meta.env.VITE_API || 'https://algotrack-1.onrender.com';
+const API = import.meta.env.VITE_API || 'http://localhost:5000';
 
 function getRatingClass(d) {
   if (!d) return 'rating-gray';

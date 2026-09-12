@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Code, FileText, Terminal, Repeat, Clock, ExternalLink, Save, CheckCircle2, Play, Pause, RotateCcw } from 'lucide-react';
 
-const API = import.meta.env.VITE_API || 'https://algotrack-1.onrender.com';
+const API = import.meta.env.VITE_API || 'http://localhost:5000';
 
 function getRatingClass(d) {
   if (!d) return 'rating-gray';

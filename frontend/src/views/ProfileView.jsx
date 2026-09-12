@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Lock, Mail, Save, Key, CheckCircle2, AlertCircle, RefreshCw, ExternalLink, ShieldAlert } from 'lucide-react';
 import ShareProfileCard from '../components/ShareProfileCard';
 
-const API = import.meta.env.VITE_API || 'https://algotrack-1.onrender.com';
+const API = import.meta.env.VITE_API || 'http://localhost:5000';
 
 const extractUsername = (input, platform) => {
   if (!input) return '';

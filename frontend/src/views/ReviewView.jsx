@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { RotateCw, CheckCircle2, AlertCircle, Clock, BookOpen, ChevronRight, Zap, Brain, Layers, Repeat } from 'lucide-react';
 
-const API = import.meta.env.VITE_API || 'https://algotrack-1.onrender.com';
+const API = import.meta.env.VITE_API || 'http://localhost:5000';
 
 export default function ReviewView({ token, showPopup, onDataRefresh }) {
   const [loading, setLoading] = useState(true);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Save, RefreshCw, CheckCircle2, AlertCircle, Download, Sun, Moon, RotateCcw, Sliders } from 'lucide-react';
 
-const API = import.meta.env.VITE_API || 'https://algotrack-1.onrender.com';
+const API = import.meta.env.VITE_API || 'http://localhost:5000';
 
 export default function SettingsView({ userSettings, token, showPopup, theme, onThemeToggle }) {
   const [loading, setLoading] = useState(false);

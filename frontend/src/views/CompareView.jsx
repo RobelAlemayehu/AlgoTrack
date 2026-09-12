@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Users, Search, TrendingUp, Code, Star, ExternalLink, BarChart3, Zap, Award } from 'lucide-react';
 
-const API = import.meta.env.VITE_API || 'https://algotrack-1.onrender.com';
+const API = import.meta.env.VITE_API || 'http://localhost:5000';
 
 function StatBlock({ label, me, them }) {
   const meNum  = Number(me)  || 0;

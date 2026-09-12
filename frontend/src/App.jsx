@@ -15,8 +15,10 @@ import SettingsView  from './views/SettingsView';
 import CompareView   from './views/CompareView';
 import ReviewView    from './views/ReviewView';
 import ProfileView   from './views/ProfileView';
+import RoadmapsView  from './views/RoadmapsView';
+import DrillView     from './views/DrillView';
 
-const API = import.meta.env.VITE_API || 'https://algotrack-1.onrender.com';
+const API = import.meta.env.VITE_API || 'http://localhost:5000';
 
 function getLocalDateStr(dateInput) {
   if (!dateInput) return null;
@@ -388,6 +390,10 @@ export default function App() {
         return <DashboardView problems={problems} streak={streak} lcStats={lcStats} totalSolved={totalSolved} cfRating={cfRating} cfRank={cfRank} token={token} onDataRefresh={fetchData} />;
       case 'Tracker':
         return <TrackerView problems={problems} lastSyncTime={lastSyncTime} onSync={handleSync} searchQuery={searchQuery} token={token} onDataRefresh={fetchData} />;
+      case 'Roadmaps':
+        return <RoadmapsView token={token} showPopup={showPopup} />;
+      case 'Drill':
+        return <DrillView token={token} showPopup={showPopup} onDataRefresh={fetchData} />;
       case 'Review':
         return <ReviewView token={token} showPopup={showPopup} onDataRefresh={fetchData} />;
       case 'Analytics':

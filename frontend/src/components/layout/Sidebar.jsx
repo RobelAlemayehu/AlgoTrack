@@ -1,12 +1,14 @@
 import React from 'react';
 import {
   LayoutDashboard, Activity, BarChart3, BookOpen,
-  Settings, LogOut, Zap, Users, Repeat, User
+  Settings, LogOut, Zap, Users, Repeat, User, Map, Target
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { id: 'Home',      icon: <LayoutDashboard size={16} />, label: 'Dashboard' },
   { id: 'Tracker',   icon: <Activity size={16} />,        label: 'DSA Tracker' },
+  { id: 'Roadmaps',  icon: <Map size={16} />,             label: 'Roadmaps' },
+  { id: 'Drill',     icon: <Target size={16} />,          label: 'Drill Mode' },
   { id: 'Review',    icon: <Repeat size={16} />,          label: 'Review Queue' },
   { id: 'Analytics', icon: <BarChart3 size={16} />,       label: 'Analytics' },
   { id: 'Notes',     icon: <BookOpen size={16} />,        label: 'Notes' },

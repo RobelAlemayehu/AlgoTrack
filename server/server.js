@@ -10,6 +10,8 @@ const noteRoutes = require('./routes/noteRoutes')
 const userRoutes = require('./routes/user')
 
 const reviewRoutes = require('./routes/reviewRoutes');
+const roadmapRoutes = require('./routes/roadmapRoutes');
+const drillRoutes = require('./routes/drillRoutes');
 
 dotenv.config();
 connectDB();
@@ -24,6 +26,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/notes', noteRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/review', reviewRoutes);
+app.use('/api/roadmaps', roadmapRoutes);
+app.use('/api/drills', drillRoutes);
 
 app.get('/api/docs', (req, res) => {
     res.sendFile(require('path').join(__dirname, 'swagger.json'));
