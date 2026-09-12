@@ -405,3 +405,24 @@ select option, select.input-field option {
   th.col-tags, td.col-tags,
   th.col-platform, td.col-platform { display: none; }
 }
+
+/* Custom Select & Number Input Dark Theme Overrides */
+select, option {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border);
+}
+
+select:focus, option:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}

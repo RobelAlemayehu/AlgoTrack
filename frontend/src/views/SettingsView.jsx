@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, RefreshCw, CheckCircle2, AlertCircle, Download, Sun, Moon, RotateCcw, Sliders } from 'lucide-react';
+import { Save, RefreshCw, CheckCircle2, AlertCircle, Download, Sun, Moon, RotateCcw, Sliders, Globe, Copy, ExternalLink, Eye } from 'lucide-react';
 
 const API = import.meta.env.VITE_API || 'http://localhost:5000';
 
@@ -132,6 +132,9 @@ export default function SettingsView({ userSettings, token, showPopup, theme, on
         </div>
       </div>
 
+      {/* Public Profile Settings Panel */}
+      <PublicProfileSettingsPanel token={token} showPopup={showPopup} />
+
       {/* Force Resync & Recovery Panel */}
       <div className="glass" style={{ borderRadius: 6, padding: '18px 20px' }}>
         <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -168,6 +171,153 @@ export default function SettingsView({ userSettings, token, showPopup, theme, on
           </button>
           <button className="btn-ghost" onClick={() => handleDownloadExport('csv')} style={{ fontSize: 12 }}>
             <Download size={13} /> Export CSV
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PublicProfileSettingsPanel({ token, showPopup }) {
+  const [enabled, setEnabled] = useState(false);
+  const [slug, setSlug] = useState('');
+  const [views, setViews] = useState(0);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${API}/api/public/config/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.publicProfile) {
+          setEnabled(data.publicProfile.enabled || false);
+          setSlug(data.publicProfile.slug || '');
+          setViews(data.publicProfile.views || 0);
+        }
+      })
+      .catch(console.error);
+  }, [token]);
+
+  const handleSavePublicProfile = async () => {
+    if (!token) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`${API}/api/public/config/update`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ enabled, slug })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showPopup?.('Public Profile Saved', 'Your public portfolio URL settings have been updated.', 'success');
+        if (data.publicProfile) {
+          setEnabled(data.publicProfile.enabled);
+          setSlug(data.publicProfile.slug);
+        }
+      } else {
+        showPopup?.('Update Failed', data.error || 'Could not update public profile.', 'error');
+      }
+    } catch (err) {
+      showPopup?.('Error', 'Network error while updating public profile.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const shareUrl = `${window.location.origin}/#/u/${slug}`;
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(shareUrl);
+    showPopup?.('Link Copied!', 'Public profile link copied to clipboard.', 'success');
+  };
+
+  return (
+    <div className="glass" style={{ borderRadius: 6, padding: '18px 20px' }}>
+      <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Globe size={15} style={{ color: 'var(--accent)' }} /> Public Portfolio Profile
+      </h2>
+      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
+        Share your verified problem solving metrics and accomplishments via a read-only public link.
+      </p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Enable Public Profile Page</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Make your portfolio accessible via a shareable public URL</div>
+          </div>
+
+          <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={e => setEnabled(e.target.checked)}
+              style={{ opacity: 0, width: 0, height: 0 }}
+            />
+            <span
+              style={{
+                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: enabled ? 'var(--accent)' : 'var(--bg-muted)',
+                borderRadius: 24, transition: '0.2s'
+              }}
+            >
+              <span
+                style={{
+                  position: 'absolute', content: '""', height: 18, width: 18, left: enabled ? 22 : 3, bottom: 3,
+                  backgroundColor: '#fff', borderRadius: '50%', transition: '0.2s'
+                }}
+              />
+            </span>
+          </label>
+        </div>
+
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>
+            Custom Profile URL Handle / Slug
+          </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+              {window.location.origin}/#/u/
+            </span>
+            <input
+              type="text"
+              value={slug}
+              onChange={e => setSlug(e.target.value)}
+              className="input-field"
+              style={{ flex: 1, fontSize: 13, background: 'var(--bg-base)' }}
+              placeholder="your-username"
+            />
+          </div>
+        </div>
+
+        {enabled && slug && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-base)', padding: '10px 14px', borderRadius: 6, border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Eye size={14} style={{ color: 'var(--accent)' }} />
+              <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
+                {views} Public Profile Views
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button onClick={handleCopyLink} className="btn-ghost" style={{ padding: '4px 10px', fontSize: 11, gap: 4 }}>
+                <Copy size={12} /> Copy Link
+              </button>
+              <a href={`/#/u/${slug}`} target="_blank" rel="noopener noreferrer" className="btn-ghost" style={{ padding: '4px 10px', fontSize: 11, gap: 4 }}>
+                Preview <ExternalLink size={12} />
+              </a>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+          <button onClick={handleSavePublicProfile} disabled={saving} className="btn-primary" style={{ fontSize: 12, gap: 6 }}>
+            <Save size={13} /> {saving ? 'Saving...' : 'Save Public Settings'}
           </button>
         </div>
       </div>

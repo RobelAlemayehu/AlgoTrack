@@ -52,6 +52,12 @@ const UserSchema = new mongoose.Schema({
   }],
   // Auth refresh token
   refreshToken: { type: String, default: '' },
+  // Public profile settings
+  publicProfile: {
+    enabled: { type: Boolean, default: false },
+    slug:    { type: String, sparse: true, unique: true, default: null },
+    views:   { type: Number, default: 0 }
+  },
   // Preferences
   preferences: {
     theme: { type: String, enum: ['dark', 'light'], default: 'dark' }

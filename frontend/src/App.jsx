@@ -17,6 +17,8 @@ import ReviewView    from './views/ReviewView';
 import ProfileView   from './views/ProfileView';
 import RoadmapsView  from './views/RoadmapsView';
 import DrillView     from './views/DrillView';
+import SimulatorView from './views/SimulatorView';
+import PublicProfileView from './views/PublicProfileView';
 
 const API = import.meta.env.VITE_API || 'http://localhost:5000';
 
@@ -130,6 +132,15 @@ export default function App() {
   const [activeTab,    setActiveTab]    = useState('Home');
   const [searchQuery,  setSearchQuery]  = useState('');
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true');
+
+  const toggleSidebarCollapse = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('sidebarCollapsed', String(next));
+      return next;
+    });
+  };
 
   // ── Core data ─────────────────────────────────────────────────────────────
   const [problems,      setProblems]      = useState([]);
@@ -373,6 +384,12 @@ export default function App() {
   const otherCount  = (problems || []).filter(p => !p.archived && p.platform !== 'LeetCode' && p.platform !== 'Codeforces').length;
   const totalSolved = lcCount + cfCount + otherCount;
 
+  // Check for public profile route (standalone unauthenticated page)
+  const isPublicRoute = window.location.hash.startsWith('#/u/') || window.location.pathname.startsWith('/u/');
+  if (isPublicRoute) {
+    return <PublicProfileView />;
+  }
+
   // ── Not logged in ─────────────────────────────────────────────────────────
   if (!token) {
     return (
@@ -394,6 +411,8 @@ export default function App() {
         return <RoadmapsView token={token} showPopup={showPopup} />;
       case 'Drill':
         return <DrillView token={token} showPopup={showPopup} onDataRefresh={fetchData} />;
+      case 'Simulator':
+        return <SimulatorView token={token} showPopup={showPopup} cfRating={cfRating} />;
       case 'Review':
         return <ReviewView token={token} showPopup={showPopup} onDataRefresh={fetchData} />;
       case 'Analytics':
@@ -428,6 +447,8 @@ export default function App() {
         onLogout={handleLogout}
         totalSolved={totalSolved}
         isOpen={sidebarOpen}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={toggleSidebarCollapse}
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>

@@ -12,6 +12,8 @@ const userRoutes = require('./routes/user')
 const reviewRoutes = require('./routes/reviewRoutes');
 const roadmapRoutes = require('./routes/roadmapRoutes');
 const drillRoutes = require('./routes/drillRoutes');
+const simulatorRoutes = require('./routes/simulatorRoutes');
+const publicRoutes = require('./routes/publicRoutes');
 
 dotenv.config();
 connectDB();
@@ -28,6 +30,8 @@ app.use('/api/user', userRoutes);
 app.use('/api/review', reviewRoutes);
 app.use('/api/roadmaps', roadmapRoutes);
 app.use('/api/drills', drillRoutes);
+app.use('/api/simulator', simulatorRoutes);
+app.use('/api/public', publicRoutes);
 
 app.get('/api/docs', (req, res) => {
     res.sendFile(require('path').join(__dirname, 'swagger.json'));
