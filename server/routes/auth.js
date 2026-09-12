@@ -15,10 +15,16 @@ router.post('/register', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
+        const defaultSlug = username.toLowerCase().replace(/[^a-z0-9_-]/g, '');
         user = new User({ 
             username, 
             email, 
-            password: hashedPassword 
+            password: hashedPassword,
+            publicProfile: {
+                enabled: true,
+                slug: defaultSlug,
+                views: 0
+            }
         });
         
         await user.save();

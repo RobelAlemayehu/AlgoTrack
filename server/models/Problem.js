@@ -92,6 +92,11 @@ const problemSchema = new mongoose.Schema({
         type: String,
         enum: ['sync', 'manual'],
         default: 'sync'
+    },
+    revealedHintTier: {
+        type: String,
+        enum: ['none', 'nudge', 'approach', 'solution'],
+        default: 'none'
     }
 },
     { timestamps: true }

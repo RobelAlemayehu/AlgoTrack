@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import WeaknessPracticePlan from '../components/WeaknessPracticePlan';
+import SolvingPatternsCard from '../components/SolvingPatternsCard';
 
 function StatMini({ label, value, sub, color }) {
   return (
@@ -311,6 +312,9 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
           <span>More</span>
         </div>
       </div>
+
+      {/* Solving Patterns (Time & Day) Heatmap & Real Summary */}
+      <SolvingPatternsCard problems={problems} lcCalendar={lcCalendar} />
 
       {/* Weekly Velocity Bar Chart */}
       <div className="glass" style={{ borderRadius: 6, padding: '18px 20px' }}>

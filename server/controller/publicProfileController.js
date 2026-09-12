@@ -88,15 +88,18 @@ const getPublicProfileBySlug = async (req, res) => {
     if (!slug) return res.status(400).json({ error: 'Slug is required' });
 
     const cleanSlug = slug.trim().toLowerCase();
+    const escapedSlug = cleanSlug.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
 
-    // Find user with enabled public profile and matching slug
+    // Find user by either custom publicProfile.slug OR exact/case-insensitive username
     const user = await User.findOne({
-      'publicProfile.slug': cleanSlug,
-      'publicProfile.enabled': true
+      $or: [
+        { 'publicProfile.slug': cleanSlug },
+        { username: { $regex: new RegExp(`^${escapedSlug}$`, 'i') } }
+      ]
     });
 
-    if (!user) {
-      return res.status(404).json({ error: 'Public profile not found or private.' });
+    if (!user || user.publicProfile?.enabled === false) {
+      return res.status(404).json({ error: 'Public profile not found or set to private.' });
     }
 
     // Increment page views server-side

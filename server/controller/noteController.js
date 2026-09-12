@@ -55,3 +55,31 @@ exports.getNotes = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+exports.updateHintTier = async (req, res) => {
+    try {
+        const { tier } = req.body;
+        const validTiers = ['none', 'nudge', 'approach', 'solution'];
+        if (!tier || !validTiers.includes(tier)) {
+            return res.status(400).json({ error: 'Invalid tier specified' });
+        }
+
+        const tierRanks = { none: 0, nudge: 1, approach: 2, solution: 3 };
+
+        const problem = await Problem.findOne({ _id: req.params.id, userId: req.user.id });
+        if (!problem) return res.status(404).json({ error: 'Problem not found' });
+
+        const currentRank = tierRanks[problem.revealedHintTier || 'none'] || 0;
+        const newRank = tierRanks[tier];
+
+        // Only upgrade hint tier rank (never downgrade user reflection tier)
+        if (newRank > currentRank) {
+            problem.revealedHintTier = tier;
+            await problem.save();
+        }
+
+        return res.json(problem);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};

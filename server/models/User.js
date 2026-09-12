@@ -54,7 +54,7 @@ const UserSchema = new mongoose.Schema({
   refreshToken: { type: String, default: '' },
   // Public profile settings
   publicProfile: {
-    enabled: { type: Boolean, default: false },
+    enabled: { type: Boolean, default: true },
     slug:    { type: String, sparse: true, unique: true, default: null },
     views:   { type: Number, default: 0 }
   },

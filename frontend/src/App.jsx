@@ -377,6 +377,25 @@ export default function App() {
     }
   };
 
+  // ── Hint tier update ──────────────────────────────────────────────────────
+  const handleUpdateHintTier = async (problemId, tier) => {
+    try {
+      const res = await fetch(`${API}/api/notes/${problemId}/hint-tier`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tier })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setProblems(prev => prev.map(p => p._id === problemId ? { ...p, ...data } : p));
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
   // ── Derived ───────────────────────────────────────────────────────────────
   const streak      = calcStreak(problems, lcCalendar);
   const lcCount     = Math.max(lcStats?.total || 0, (problems || []).filter(p => !p.archived && p.platform === 'LeetCode').length);
@@ -385,7 +404,7 @@ export default function App() {
   const totalSolved = lcCount + cfCount + otherCount;
 
   // Check for public profile route (standalone unauthenticated page)
-  const isPublicRoute = window.location.hash.startsWith('#/u/') || window.location.pathname.startsWith('/u/');
+  const isPublicRoute = window.location.hash.includes('/u/') || window.location.pathname.includes('/u/');
   if (isPublicRoute) {
     return <PublicProfileView />;
   }
@@ -418,7 +437,7 @@ export default function App() {
       case 'Analytics':
         return <AnalyticsView problems={problems} lcStats={lcStats} lcCalendar={lcCalendar} />;
       case 'Notes':
-        return <NotesView problems={problems} onUpdateNote={handleUpdateNote} />;
+        return <NotesView problems={problems} onUpdateNote={handleUpdateNote} onUpdateHintTier={handleUpdateHintTier} />;
       case 'Settings':
         return <SettingsView userSettings={userSettings} setUserSettings={setUserSettings} token={token} showPopup={showPopup} theme={theme} onThemeToggle={toggleTheme} />;
       case 'Compare':

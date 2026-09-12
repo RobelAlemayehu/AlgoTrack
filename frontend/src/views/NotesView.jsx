@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, BookOpen, Code, Edit3, Save, X, Clock, ChevronRight, FileText, Terminal, Zap } from 'lucide-react';
+import { Search, BookOpen, Code, Edit3, Save, X, ChevronRight, FileText, Terminal, Zap, HelpCircle, ExternalLink, Tag, Lightbulb, CheckCircle2, Lock } from 'lucide-react';
 
-const TABS = ['Explanation', 'Code', 'Complexity'];
+const TABS = ['Explanation', 'Code', 'Complexity', 'Need Help? (Hints)'];
 
 function getRatingClass(d) {
   if (!d) return 'rating-gray';
@@ -22,12 +22,51 @@ function getRatingClass(d) {
   return 'badge-unknown';
 }
 
-export default function NotesView({ problems, onUpdateNote }) {
+function getOfficialLink(problem) {
+  if (!problem) return null;
+  const p = problem;
+
+  if (p.platform === 'Codeforces') {
+    const rawId = String(p.problemId || '');
+    const match = rawId.match(/^(\d+)[-/_]?([A-Z0-9]+)$/i);
+    if (match) {
+      const contestId = match[1];
+      const index = match[2].toUpperCase();
+      return {
+        label: `Codeforces ${contestId}${index} Problem & Tutorial`,
+        url: `https://codeforces.com/problemset/problem/${contestId}/${index}`
+      };
+    }
+    return {
+      label: 'Official Codeforces Problemset',
+      url: 'https://codeforces.com/problemset'
+    };
+  } else if (p.platform === 'LeetCode') {
+    const slug = (p.title || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-');
+    return {
+      label: `LeetCode ${p.title} Editorial`,
+      url: `https://leetcode.com/problems/${slug}/editorial/`
+    };
+  }
+
+  return null;
+}
+
+const TIER_RANKS = { none: 0, nudge: 1, approach: 2, solution: 3 };
+
+export default function NotesView({ problems, onUpdateNote, onUpdateHintTier }) {
   const [selectedId, setSelectedId] = useState(null);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('Explanation');
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ explanation: '', code: '', timeComplexity: '', spaceComplexity: '' });
+
+  // Progressive Hint Local State
+  const [revealedTier, setRevealedTier] = useState('none');
 
   const safe = Array.isArray(problems) ? problems : [];
   const sorted = [...safe].sort((a, b) => new Date(b.solvedAt || b.syncedAt || b.createdAt) - new Date(a.solvedAt || a.syncedAt || a.createdAt));
@@ -52,6 +91,7 @@ export default function NotesView({ problems, onUpdateNote }) {
         timeComplexity: typeof cx === 'object' ? (cx.time || '') : cx,
         spaceComplexity: typeof cx === 'object' ? (cx.space || '') : '',
       });
+      setRevealedTier(selected.revealedHintTier || 'none');
       setEditing(false);
     }
   }, [selectedId, selected]);
@@ -65,6 +105,19 @@ export default function NotesView({ problems, onUpdateNote }) {
       category: selected.category,
     });
     if (success) setEditing(false);
+  };
+
+  const handleReveal = async (targetTier) => {
+    if (!selected) return;
+    const currentRank = TIER_RANKS[revealedTier] || 0;
+    const targetRank = TIER_RANKS[targetTier];
+
+    if (targetRank > currentRank) {
+      setRevealedTier(targetTier);
+      if (onUpdateHintTier) {
+        await onUpdateHintTier(selected._id, targetTier);
+      }
+    }
   };
 
   return (
@@ -129,6 +182,11 @@ export default function NotesView({ problems, onUpdateNote }) {
                   <span className={`badge ${selected.platform === 'LeetCode' ? 'badge-lc' : 'badge-cf'}`}>{selected.platform}</span>
                   <ChevronRight size={12} style={{ color: 'var(--text-muted)' }} />
                   <span className={getRatingClass(selected.difficulty)} style={{ fontSize: 12 }}>{selected.difficulty}</span>
+                  {selected.revealedHintTier && selected.revealedHintTier !== 'none' && (
+                    <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', padding: '1px 6px', borderRadius: 4, background: 'rgba(240, 136, 62, 0.15)', color: 'var(--accent)', border: '1px solid rgba(240, 136, 62, 0.3)' }}>
+                      Hint Used: {selected.revealedHintTier.toUpperCase()}
+                    </span>
+                  )}
                 </div>
                 <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{selected.title}</h2>
               </div>
@@ -162,6 +220,7 @@ export default function NotesView({ problems, onUpdateNote }) {
                   {t === 'Explanation' && <FileText size={12} />}
                   {t === 'Code' && <Terminal size={12} />}
                   {t === 'Complexity' && <Zap size={12} />}
+                  {t === 'Need Help? (Hints)' && <HelpCircle size={12} style={{ color: 'var(--accent)' }} />}
                   {t}
                 </button>
               ))}
@@ -261,6 +320,170 @@ export default function NotesView({ problems, onUpdateNote }) {
                       ))}
                     </div>
                   )}
+                </div>
+              )}
+
+              {tab === 'Need Help? (Hints)' && (
+                <div style={{ maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {/* Status Banner */}
+                  <div className="glass" style={{ borderRadius: 8, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <HelpCircle size={18} style={{ color: 'var(--accent)' }} />
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Progressive Help System</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Step-by-step guidance. Click to reveal each tier intentionally.</div>
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: 11, fontFamily: 'var(--font-mono)', padding: '4px 10px', borderRadius: 6,
+                      background: revealedTier === 'none' ? 'var(--bg-muted)' : 'rgba(240, 136, 62, 0.15)',
+                      color: revealedTier === 'none' ? 'var(--text-muted)' : 'var(--accent)',
+                      border: '1px solid var(--border)', fontWeight: 600
+                    }}>
+                      Current Reflection: {revealedTier.toUpperCase()}
+                    </span>
+                  </div>
+
+                  {/* Tier 1: Nudge */}
+                  <div className="glass" style={{ borderRadius: 8, padding: '16px 18px', borderLeft: '4px solid var(--accent)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Tag size={15} style={{ color: 'var(--accent)' }} />
+                        <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Tier 1: Nudge (Tag & Category Hints)</h3>
+                      </div>
+                      {TIER_RANKS[revealedTier] >= 1 ? (
+                        <span style={{ fontSize: 11, color: 'var(--cf-green)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                          <CheckCircle2 size={13} /> Unlocked
+                        </span>
+                      ) : (
+                        <button className="btn-primary" onClick={() => handleReveal('nudge')} style={{ fontSize: 11, padding: '4px 10px' }}>
+                          Reveal Nudge
+                        </button>
+                      )}
+                    </div>
+
+                    {TIER_RANKS[revealedTier] >= 1 ? (
+                      <div style={{ background: 'var(--bg-surface)', padding: 12, borderRadius: 6, fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.6 }}>
+                        <div style={{ marginBottom: 6 }}>
+                          <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Topic Tags: </span>
+                          <span style={{ fontWeight: 600, color: 'var(--accent)' }}>
+                            {Array.isArray(selected.tags) && selected.tags.length > 0 ? selected.tags.join(', ') : (selected.category || 'General DSA')}
+                          </span>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Difficulty Rating: </span>
+                          <span className={getRatingClass(selected.difficulty)} style={{ fontSize: 11 }}>{selected.difficulty}</span>
+                        </div>
+                        <p style={{ marginTop: 8, fontSize: 11, color: 'var(--text-secondary)' }}>
+                          💡 Hint: Consider algorithms and data structures commonly used for {Array.isArray(selected.tags) && selected.tags.length > 0 ? selected.tags[0] : 'this category'}.
+                        </p>
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>Click "Reveal Nudge" to view tag and category hints without seeing the full solution.</p>
+                    )}
+                  </div>
+
+                  {/* Tier 2: Approach */}
+                  <div className="glass" style={{ borderRadius: 8, padding: '16px 18px', borderLeft: '4px solid var(--cf-cyan)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Lightbulb size={15} style={{ color: 'var(--cf-cyan)' }} />
+                        <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Tier 2: Approach & Official Editorial</h3>
+                      </div>
+                      {TIER_RANKS[revealedTier] >= 2 ? (
+                        <span style={{ fontSize: 11, color: 'var(--cf-green)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                          <CheckCircle2 size={13} /> Unlocked
+                        </span>
+                      ) : (
+                        <button className="btn-primary" onClick={() => handleReveal('approach')} style={{ fontSize: 11, padding: '4px 10px' }}>
+                          Reveal Approach
+                        </button>
+                      )}
+                    </div>
+
+                    {TIER_RANKS[revealedTier] >= 2 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ background: 'var(--bg-surface)', padding: 12, borderRadius: 6 }}>
+                          <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginBottom: 4 }}>Saved User Approach Notes:</div>
+                          {selected.explanation ? (
+                            <p style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{selected.explanation}</p>
+                          ) : (
+                            <p style={{ fontSize: 11, color: 'var(--text-muted)', italic: 'true' }}>No user approach note saved yet for this problem.</p>
+                          )}
+                        </div>
+
+                        {/* Official Editorial Link */}
+                        {getOfficialLink(selected) && (
+                          <a
+                            href={getOfficialLink(selected).url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-ghost"
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12,
+                              padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 6, width: 'fit-content',
+                              color: 'var(--cf-cyan)'
+                            }}
+                          >
+                            <ExternalLink size={14} /> {getOfficialLink(selected).label}
+                          </a>
+                        )}
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>Click "Reveal Approach" to view saved approach notes and official platform editorial link.</p>
+                    )}
+                  </div>
+
+                  {/* Tier 3: Full Solution */}
+                  <div className="glass" style={{ borderRadius: 8, padding: '16px 18px', borderLeft: '4px solid var(--cf-red)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Code size={15} style={{ color: 'var(--cf-red)' }} />
+                        <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Tier 3: Full Solution Code & Solution Link</h3>
+                      </div>
+                      {TIER_RANKS[revealedTier] >= 3 ? (
+                        <span style={{ fontSize: 11, color: 'var(--cf-green)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                          <CheckCircle2 size={13} /> Unlocked
+                        </span>
+                      ) : (
+                        <button className="btn-primary" onClick={() => handleReveal('solution')} style={{ fontSize: 11, padding: '4px 10px' }}>
+                          Reveal Solution
+                        </button>
+                      )}
+                    </div>
+
+                    {TIER_RANKS[revealedTier] >= 3 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {(selected.codeImplementation || selected.codeImplmentation) ? (
+                          <pre className="code-block" style={{ maxHeight: 240, overflowY: 'auto' }}>
+                            {selected.codeImplementation || selected.codeImplmentation}
+                          </pre>
+                        ) : (
+                          <div style={{ background: 'var(--bg-surface)', padding: 12, borderRadius: 6, fontSize: 11, color: 'var(--text-muted)' }}>
+                            No solution code saved yet in notes.
+                          </div>
+                        )}
+
+                        {getOfficialLink(selected) && (
+                          <a
+                            href={getOfficialLink(selected).url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-ghost"
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12,
+                              padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 6, width: 'fit-content',
+                              color: 'var(--accent)'
+                            }}
+                          >
+                            <ExternalLink size={14} /> Open {selected.platform} Official Solution Page
+                          </a>
+                        )}
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>Click "Reveal Solution" to view full implementation code and official solution link.</p>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

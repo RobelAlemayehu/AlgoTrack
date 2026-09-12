@@ -21,14 +21,18 @@ export default function PublicProfileView({ slug: routeSlug }) {
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState('');
 
-  // Extract slug from URL hash (e.g. #/u/rovel_19) or prop
+  // Extract slug from URL hash (e.g. #/u/rovel_19) or pathname (e.g. /u/rovel_19) or prop
   const getSlugFromUrl = () => {
     if (routeSlug) return routeSlug;
     const hash = window.location.hash || '';
-    const match = hash.match(/#\/u\/([a-zA-Z0-9_-]+)/);
-    if (match) return match[1];
-    const pathMatch = window.location.pathname.match(/\/u\/([a-zA-Z0-9_-]+)/);
-    return pathMatch ? pathMatch[1] : null;
+    const hashMatch = hash.match(/#\/u\/([^/?#]+)/);
+    if (hashMatch) return decodeURIComponent(hashMatch[1].replace(/\/$/, ''));
+
+    const pathname = window.location.pathname || '';
+    const pathMatch = pathname.match(/\/u\/([^/?#]+)/);
+    if (pathMatch) return decodeURIComponent(pathMatch[1].replace(/\/$/, ''));
+
+    return null;
   };
 
   const targetSlug = getSlugFromUrl();
