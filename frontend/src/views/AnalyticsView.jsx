@@ -10,6 +10,16 @@ function StatMini({ label, value, sub, color }) {
   );
 }
 
+function getLocalDateKey(dateInput) {
+  if (!dateInput) return null;
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return null;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
   const safe   = Array.isArray(problems) ? problems : [];
   const calMap = (lcCalendar && typeof lcCalendar === 'object') ? lcCalendar : {};
@@ -21,7 +31,7 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
     const lc     = lcStats?.total  ?? safe.filter(p => p.platform === 'LeetCode').length;
     const cf     = safe.filter(p => p.platform === 'Codeforces').length;
 
-    // Weekly activity — merge CF DB dates + LC calendar
+    // Weekly activity — merge CF DB dates + LC calendar using real solve dates
     const weekly = [];
     const now = new Date();
     for (let i = 9; i >= 0; i--) {
@@ -31,7 +41,9 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
       const end = new Date(start); end.setDate(end.getDate() + 7);
 
       const cfCount = safe.filter(p => {
-        const d = new Date(p.syncedAt || p.createdAt || 0);
+        const dateVal = p.solvedAt || p.syncedAt || p.createdAt;
+        if (!dateVal) return false;
+        const d = new Date(dateVal);
         return d >= start && d < end;
       }).length;
 
@@ -51,40 +63,137 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
     return { easy, medium, hard, lc, cf, weekly, maxWeekly, total: lc + cf };
   }, [safe, lcStats, calMap]);
 
-  // Heatmap — merge LC calendar (timestamp→count) with CF DB solve dates
-  const heatmap = useMemo(() => {
+  // Heatmap — LeetCode-style 13-Month block layout with gaps, active days, max streak, current streak
+  // Dynamically computed by merging Codeforces MongoDB problems + LeetCode API calendar
+  const heatmapData = useMemo(() => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    const start = new Date(today); start.setDate(today.getDate() - 364);
-    while (start.getDay() !== 0) start.setDate(start.getDate() - 1);
 
     const countMap = {};
+
+    // 1. Codeforces problems from MongoDB backend API
     safe.forEach(p => {
-      const d = new Date(p.syncedAt || p.createdAt || 0);
-      d.setHours(0, 0, 0, 0);
-      const key = d.toISOString().split('T')[0];
-      countMap[key] = (countMap[key] || 0) + 1;
-    });
-
-    Object.entries(calMap).forEach(([ts, cnt]) => {
-      const d = new Date(parseInt(ts) * 1000);
-      d.setHours(0, 0, 0, 0);
-      const key = d.toISOString().split('T')[0];
-      countMap[key] = (countMap[key] || 0) + cnt;
-    });
-
-    const weeks = [];
-    let cur = new Date(start);
-    while (cur <= today) {
-      const week = [];
-      for (let d = 0; d < 7; d++) {
-        const key = cur.toISOString().split('T')[0];
-        const count = countMap[key] || 0;
-        week.push({ date: key, count, level: count === 0 ? 0 : count <= 2 ? 1 : count <= 4 ? 2 : count <= 6 ? 3 : 4 });
-        cur.setDate(cur.getDate() + 1);
+      const dateKey = getLocalDateKey(p.solvedAt || p.syncedAt || p.createdAt);
+      if (dateKey) {
+        countMap[dateKey] = (countMap[dateKey] || 0) + 1;
       }
-      weeks.push(week);
+    });
+
+    // 2. LeetCode submission calendar from backend API
+    Object.entries(calMap).forEach(([ts, cnt]) => {
+      const numTs = Number(ts);
+      if (!isNaN(numTs) && numTs > 0 && cnt > 0) {
+        const dateKey = getLocalDateKey(numTs * 1000);
+        if (dateKey) {
+          countMap[dateKey] = (countMap[dateKey] || 0) + cnt;
+        }
+      }
+    });
+
+    const curYear = today.getFullYear();
+    const curMonthIndex = today.getMonth();
+
+    const months = [];
+    for (let i = 12; i >= 0; i--) {
+      const targetDate = new Date(curYear, curMonthIndex - i, 1);
+      const year = targetDate.getFullYear();
+      const month = targetDate.getMonth();
+      const monthName = targetDate.toLocaleString('en-US', { month: 'short' });
+
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+
+      const startSun = new Date(firstDay);
+      while (startSun.getDay() !== 0) {
+        startSun.setDate(startSun.getDate() - 1);
+      }
+
+      const endSat = new Date(lastDay);
+      while (endSat.getDay() !== 6) {
+        endSat.setDate(endSat.getDate() + 1);
+      }
+
+      const weeks = [];
+      let dIter = new Date(startSun);
+
+      while (dIter <= endSat) {
+        const week = [];
+        for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
+          const isCurrentMonth = dIter.getMonth() === month;
+          const isFuture = dIter > today;
+          const key = getLocalDateKey(dIter);
+          const count = (isCurrentMonth && !isFuture) ? (countMap[key] || 0) : 0;
+
+          week.push({
+            date: key,
+            count,
+            isValid: isCurrentMonth && !isFuture,
+            level: count === 0 ? 0 : count <= 2 ? 1 : count <= 4 ? 2 : count <= 6 ? 3 : 4
+          });
+
+          dIter.setDate(dIter.getDate() + 1);
+        }
+        weeks.push(week);
+      }
+
+      months.push({
+        year,
+        month,
+        name: monthName,
+        weeks
+      });
     }
-    return weeks;
+
+    // Past 365 days window stats (sums both Codeforces and LeetCode)
+    const startOf365 = new Date(today); startOf365.setDate(startOf365.getDate() - 364);
+    let totalSubmissions = 0;
+    let activeDays = 0;
+    let maxStreak = 0;
+    let curStreakTemp = 0;
+
+    let temp = new Date(startOf365);
+    while (temp <= today) {
+      const key = getLocalDateKey(temp);
+      const cnt = countMap[key] || 0;
+      totalSubmissions += cnt;
+      if (cnt > 0) {
+        activeDays++;
+        curStreakTemp++;
+        if (curStreakTemp > maxStreak) maxStreak = curStreakTemp;
+      } else {
+        curStreakTemp = 0;
+      }
+      temp.setDate(temp.getDate() + 1);
+    }
+
+    // Current streak
+    const todayKey = getLocalDateKey(today);
+    const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayKey = getLocalDateKey(yesterday);
+
+    let currentStreak = 0;
+    let checkDate = new Date(today);
+    if (!countMap[todayKey] && !countMap[yesterdayKey]) {
+      currentStreak = 0;
+    } else {
+      if (!countMap[todayKey]) checkDate = yesterday;
+      while (true) {
+        const k = getLocalDateKey(checkDate);
+        if (countMap[k] > 0) {
+          currentStreak++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+    }
+
+    return {
+      months,
+      totalSubmissions,
+      activeDays,
+      maxStreak,
+      currentStreak
+    };
   }, [safe, calMap]);
 
   return (
@@ -103,35 +212,106 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
         <StatMini label="HARD" value={stats.hard} sub="Advanced DSA / CF Rated" color="var(--cf-red)" />
       </div>
 
-      {/* 365-Day Activity Heatmap */}
-      <div className="glass" style={{ borderRadius: 6, padding: '18px 20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <h2 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>365-Day Solve Heatmap</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-            <span>Less</span>
-            <div className="heatmap-cell heatmap-0" />
-            <div className="heatmap-cell heatmap-1" />
-            <div className="heatmap-cell heatmap-2" />
-            <div className="heatmap-cell heatmap-3" />
-            <div className="heatmap-cell heatmap-4" />
-            <span>More</span>
+      {/* 365-Day Activity Heatmap (Exact LeetCode Layout with Month Gaps) */}
+      <div className="glass" style={{ borderRadius: 8, padding: '20px 22px' }}>
+        {/* Top Header Rail */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
+              {heatmapData.totalSubmissions} submissions in the past one year
+            </span>
+            <span title="Combined LeetCode & Codeforces submission count" style={{ cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12 }}>ⓘ</span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+            <div>
+              Total active days: <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{heatmapData.activeDays}</span>
+            </div>
+            <div>
+              Max streak: <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{heatmapData.maxStreak}</span>
+            </div>
+            <div style={{
+              background: 'var(--bg-muted)',
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              padding: '4px 10px',
+              fontSize: 12,
+              color: 'var(--text-primary)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}>
+              <span>Current streak: {heatmapData.currentStreak}d</span>
+            </div>
           </div>
         </div>
 
-        <div className="heatmap-scroll" style={{ overflowX: 'auto', paddingBottom: 6 }}>
-          <div style={{ display: 'flex', gap: 3, minWidth: 700 }}>
-            {heatmap.map((week, wi) => (
-              <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                {week.map((cell, di) => (
+        {/* Heatmap Grid Row */}
+        <div className="heatmap-scroll" style={{ overflowX: 'auto', paddingBottom: 8 }}>
+          <div style={{ minWidth: 800 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              {/* Weekday Labels Column on the Left */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, width: 28, paddingTop: 1 }}>
+                {['', 'Mon', '', 'Wed', '', 'Fri', ''].map((day, di) => (
                   <div
                     key={di}
-                    className={`heatmap-cell heatmap-${cell.level}`}
-                    title={`${cell.date}: ${cell.count} problem${cell.count === 1 ? '' : 's'}`}
-                  />
+                    style={{
+                      height: 11,
+                      lineHeight: '11px',
+                      fontSize: 9,
+                      fontFamily: 'var(--font-mono)',
+                      color: 'var(--text-muted)',
+                      textAlign: 'right',
+                      paddingRight: 6
+                    }}
+                  >
+                    {day}
+                  </div>
                 ))}
               </div>
-            ))}
+
+              {/* Month Blocks Container with Gap Between Months */}
+              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                {heatmapData.months.map((m, mi) => (
+                  <div key={mi} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                    {/* Week Columns inside Month Block */}
+                    <div style={{ display: 'flex', gap: 3 }}>
+                      {m.weeks.map((week, wi) => (
+                        <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          {week.map((cell, di) => (
+                            <div
+                              key={di}
+                              className={`heatmap-cell ${cell.isValid ? `heatmap-${cell.level}` : ''}`}
+                              style={{
+                                visibility: cell.isValid ? 'visible' : 'hidden'
+                              }}
+                              title={cell.isValid ? `${cell.date}: ${cell.count} problem${cell.count === 1 ? '' : 's'}` : ''}
+                            />
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Month Name Below Month Block */}
+                    <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                      {m.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
+        </div>
+
+        {/* Legend */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6, marginTop: 12, fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+          <span>Less</span>
+          <div className="heatmap-cell heatmap-0" />
+          <div className="heatmap-cell heatmap-1" />
+          <div className="heatmap-cell heatmap-2" />
+          <div className="heatmap-cell heatmap-3" />
+          <div className="heatmap-cell heatmap-4" />
+          <span>More</span>
         </div>
       </div>
 
@@ -158,3 +338,5 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
     </div>
   );
 }
+
+

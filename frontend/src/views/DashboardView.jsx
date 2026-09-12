@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, Flame, AlertCircle, Code, ExternalLink, Lightbulb, Tag, Calendar, Trophy, Shield, Clock, ChevronRight, Target, Zap, Award, ShieldAlert, Crown, Swords } from 'lucide-react';
+import { CheckCircle2, Flame, AlertCircle, Code, ExternalLink, Lightbulb, Tag, Calendar, Trophy, Shield, Clock, ChevronRight, Target, Zap, Award, ShieldAlert, Crown, Swords, Edit2 } from 'lucide-react';
+import CustomSelect from '../components/ui/CustomSelect';
 
 const BADGE_ICONS = {
   'first-ac': Target,
@@ -42,10 +43,10 @@ function timeAgo(dateStr) {
 }
 
 function getRatingClass(diff) {
-  if (!diff) return 'rating-gray';
-  const num = parseInt(diff);
+  if (!diff) return 'badge-unknown';
+  const num = Number(diff);
   if (!isNaN(num)) {
-    if (num < 1200) return 'rating-green';
+    if (num < 1200) return 'rating-gray';
     if (num < 1400) return 'rating-green';
     if (num < 1600) return 'rating-cyan';
     if (num < 1900) return 'rating-blue';
@@ -66,16 +67,59 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
   const [contests, setContests] = useState([]);
   const [badges, setBadges] = useState([]);
   const [dueReviewCount, setDueReviewCount] = useState(0);
+  const [userTarget, setUserTarget] = useState(5);
+  const [editingTarget, setEditingTarget] = useState(false);
+  const [lcCalendar, setLcCalendar] = useState(null);
 
   const safe = Array.isArray(problems) ? problems : [];
-  const sorted = [...safe].sort((a, b) => new Date(b.syncedAt || b.createdAt) - new Date(a.syncedAt || a.createdAt));
+  const sorted = [...safe].sort((a, b) => new Date(b.solvedAt || b.syncedAt || b.createdAt) - new Date(a.solvedAt || a.syncedAt || a.createdAt));
 
   const lcCount = lcStats?.total || safe.filter(p => p.platform === 'LeetCode').length;
   const cfCount = safe.filter(p => p.platform === 'Codeforces').length;
   const totalSolved = cfCount + lcCount;
 
-  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-  const thisWeekCount = safe.filter(p => new Date(p.syncedAt || p.createdAt) >= weekAgo).length;
+  // Load Profile goals & calendar
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${API}/api/auth/profile`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => {
+        if (d.goals?.weeklyTarget) setUserTarget(d.goals.weeklyTarget);
+        if (d.lcCalendar) setLcCalendar(d.lcCalendar);
+      })
+      .catch(() => {});
+  }, [token]);
+
+  const handleSaveTarget = async (newVal) => {
+    const val = Math.max(1, parseInt(newVal) || 5);
+    setUserTarget(val);
+    setEditingTarget(false);
+    try {
+      await fetch(`${API}/api/auth/profile`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ goals: { weeklyTarget: val } })
+      });
+    } catch {}
+  };
+
+  // Calculate REAL solves in the last 7 days
+  const weekAgoMs = Date.now() - (7 * 86400000);
+  const cfThisWeek = safe.filter(p => {
+    if (p.platform === 'Codeforces' && p.solvedAt) {
+      return new Date(p.solvedAt).getTime() >= weekAgoMs;
+    }
+    return false;
+  }).length;
+
+  const lcThisWeek = Object.entries(lcCalendar || {}).reduce((acc, [ts, cnt]) => {
+    const ms = Number(ts) * 1000;
+    return (ms >= weekAgoMs && cnt > 0) ? acc + cnt : acc;
+  }, 0);
+
+  const thisWeekCount = cfThisWeek + lcThisWeek;
+  const weeklyTarget = userTarget || 5;
+  const weeklyPct = Math.min(100, Math.round((thisWeekCount / weeklyTarget) * 100));
 
   const recent = sorted.slice(0, 8);
 
@@ -110,97 +154,79 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
       .finally(() => setRecLoading(false));
   }, [token, safe.length]);
 
-  const weeklyTarget = 5;
-  const weeklyPct = Math.min(100, Math.round((thisWeekCount / weeklyTarget) * 100));
-
   return (
     <div className="animate-fade-in view-pad" style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Top Header Rail */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
         <div>
-          <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-            Dashboard
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
-            Competitive Programming Tracker & Review Ledger
-          </div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Dashboard</h1>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>Competitive Programming Tracker &amp; Review Ledger</p>
         </div>
-
-        {/* CF Rating Badge if user has one */}
-        {cfRating > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-surface)', padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)' }}>
-            <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>CF RATING</span>
-            <span className={getRatingClass(cfRating.toString())} style={{ fontSize: 16 }}>{cfRating}</span>
-            {cfRank && <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'capitalize' }}>({cfRank})</span>}
-          </div>
-        )}
       </div>
 
-      {/* Horizontal Stat Rail — Dense, clean 1-strip design */}
-      <div className="glass" style={{ padding: '14px 18px', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>TOTAL SOLVED</div>
-            <div className="stat-value" style={{ color: 'var(--text-primary)' }}>{totalSolved}</div>
-          </div>
-          <div style={{ height: 28, width: 1, background: 'var(--border)' }} />
-          <div>
-            <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>LEETCODE</div>
-            <div className="stat-value" style={{ color: 'var(--accent)' }}>{lcCount}</div>
-          </div>
-          <div style={{ height: 28, width: 1, background: 'var(--border)' }} />
-          <div>
-            <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>CODEFORCES</div>
-            <div className="stat-value" style={{ color: 'var(--cf-cyan)' }}>{cfCount}</div>
-          </div>
-          <div style={{ height: 28, width: 1, background: 'var(--border)' }} />
-          <div>
-            <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>STREAK</div>
-            <div className="stat-value" style={{ color: streak > 0 ? 'var(--cf-green)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Flame size={18} style={{ color: streak > 0 ? 'var(--accent)' : 'var(--text-muted)' }} />
-              {streak}d
-            </div>
-          </div>
+      {/* 4-Stat Rail */}
+      <div className="grid-stats-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+        <div className="glass" style={{ borderRadius: 6, padding: '14px 16px' }}>
+          <p style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginBottom: 6 }}>TOTAL SOLVED</p>
+          <div className="stat-value" style={{ color: 'var(--text-primary)' }}>{totalSolved}</div>
         </div>
-
-        {/* Review Queue alert */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>REVIEWS DUE</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: dueReviewCount > 0 ? 'var(--accent)' : 'var(--cf-green)', fontFamily: 'var(--font-mono)' }}>
-              {dueReviewCount > 0 ? `${dueReviewCount} problem${dueReviewCount > 1 ? 's' : ''}` : 'All caught up!'}
-            </div>
+        <div className="glass" style={{ borderRadius: 6, padding: '14px 16px' }}>
+          <p style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginBottom: 6 }}>LEETCODE</p>
+          <div className="stat-value" style={{ color: 'var(--accent)' }}>{lcCount}</div>
+        </div>
+        <div className="glass" style={{ borderRadius: 6, padding: '14px 16px' }}>
+          <p style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginBottom: 6 }}>CODEFORCES</p>
+          <div className="stat-value" style={{ color: 'var(--cf-cyan)' }}>{cfCount}</div>
+        </div>
+        <div className="glass" style={{ borderRadius: 6, padding: '14px 16px' }}>
+          <p style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginBottom: 6 }}>STREAK</p>
+          <div className="stat-value" style={{ color: streak > 0 ? 'var(--cf-green)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Flame size={18} style={{ color: streak > 0 ? 'var(--accent)' : 'var(--text-muted)' }} />
+            {streak}d
           </div>
         </div>
       </div>
 
-      {/* Grid Layout: Main Activity + Contests/Goals */}
-      <div className="grid-main" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 18 }}>
-        
-        {/* Left Column: Recent Activity Ledger */}
-        <div className="glass" style={{ borderRadius: 8, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Recent Solved Activity</h2>
+      {/* Review Alert Banner */}
+      {dueReviewCount > 0 && (
+        <div className="glass" style={{ borderRadius: 6, padding: '12px 16px', background: 'var(--accent-dim)', borderColor: 'rgba(240,136,62,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Clock size={16} style={{ color: 'var(--accent)' }} />
+            <div>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{dueReviewCount} Problem{dueReviewCount === 1 ? '' : 's'} Due for Review Today</span>
+              <p style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Spaced-repetition queue ready for self-testing.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Grid: Recent Activity & Sidebar */}
+      <div className="grid-main" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20, alignItems: 'start' }}>
+
+        {/* Left Column: Recent Solved Activity */}
+        <div className="glass" style={{ borderRadius: 8, padding: '18px 20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <h2 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Recent Solved Activity</h2>
             <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{safe.length} total recorded</span>
           </div>
 
           {recent.length === 0 ? (
-            <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+            <div style={{ padding: '36px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
               No problems synced yet. Click <strong>Sync Now</strong> in the top header to import your submissions.
             </div>
           ) : (
             <table className="data-table">
               <thead>
                 <tr>
-                  <th style={{ width: '45%' }}>Problem</th>
+                  <th>Problem</th>
                   <th>Platform</th>
-                  <th>Difficulty / Rating</th>
-                  <th style={{ textAlign: 'right' }}>Date</th>
+                  <th>Rating / Difficulty</th>
+                  <th style={{ textAlign: 'right' }}>Solved</th>
                 </tr>
               </thead>
               <tbody>
-                {recent.map((p, i) => (
-                  <tr key={p._id || i}>
+                {recent.map(p => (
+                  <tr key={p._id || p.id}>
                     <td>
                       <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.title}</div>
                       {p.tags && p.tags.length > 0 && (
@@ -220,7 +246,7 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
                       </span>
                     </td>
                     <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
-                      {timeAgo(p.syncedAt || p.createdAt)}
+                      {timeAgo(p.solvedAt || p.syncedAt || p.createdAt)}
                     </td>
                   </tr>
                 ))}
@@ -231,13 +257,41 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
 
         {/* Right Column: Weekly Goal & Upcoming Contests */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          
+
           {/* Weekly Goal Progress */}
           <div className="glass" style={{ borderRadius: 8, padding: '16px 18px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Weekly Target</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Weekly Target</span>
+                <button
+                  onClick={() => setEditingTarget(!editingTarget)}
+                  title="Change weekly target"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 2 }}
+                >
+                  <Edit2 size={12} />
+                </button>
+              </div>
               <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>{thisWeekCount} / {weeklyTarget}</span>
             </div>
+
+            {editingTarget ? (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 10, alignItems: 'center' }}>
+                <CustomSelect
+                  value={userTarget}
+                  options={[
+                    { value: 3, label: 'Target: 3 problems/week' },
+                    { value: 5, label: 'Target: 5 problems/week' },
+                    { value: 7, label: 'Target: 7 problems/week' },
+                    { value: 10, label: 'Target: 10 problems/week' },
+                    { value: 15, label: 'Target: 15 problems/week' },
+                    { value: 20, label: 'Target: 20 problems/week' }
+                  ]}
+                  onChange={val => handleSaveTarget(val)}
+                />
+                <button className="btn-ghost" onClick={() => setEditingTarget(false)} style={{ fontSize: 11, padding: '6px 10px', height: 30, flexShrink: 0 }}>Cancel</button>
+              </div>
+            ) : null}
+
             <div className="progress-bar" style={{ marginBottom: 8 }}>
               <div className="progress-fill" style={{ width: `${weeklyPct}%`, background: 'var(--accent)' }} />
             </div>

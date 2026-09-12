@@ -78,14 +78,13 @@ const fetchAllACSubs = async (username) => {
   const allSubs = new Map(); // titleSlug -> sub
 
   // ── Tier 1: alfa-leetcode-api (public proxy, no auth, returns full recent AC) ──
-  // Used by thousands of LC stats cards; works without any user credentials.
   try {
     let offset = 0;
     const limit = 20;
     let hasMore = true;
     while (hasMore && allSubs.size < 300) {
       const url = `${LC_API}/${username}/acSubmission?limit=${limit}&offset=${offset}`;
-      const r = await axios.get(url, { timeout: 12000, headers: { 'User-Agent': UA } });
+      const r = await axios.get(url, { timeout: 25000, headers: { 'User-Agent': UA } });
       const subs = r.data?.submission || [];
       subs.forEach(s => {
         if (!allSubs.has(s.titleSlug)) allSubs.set(s.titleSlug, { ...s, statusDisplay: 'Accepted' });
@@ -105,8 +104,8 @@ const fetchAllACSubs = async (username) => {
   try {
     const headers = await makeHeaders();
     const r = await axios.post(LC_GQL, {
-      query: `query($u:String!){ recentAcSubmissionList(username:$u, limit:15){ id title titleSlug timestamp } }`,
-      variables: { u: username }
+      query: `query recentAcSubmissions($username: String!, $limit: Int!) { recentAcSubmissionList(username: $username, limit: $limit) { id title titleSlug timestamp } }`,
+      variables: { username, limit: 50 }
     }, { headers, timeout: 15000 });
     const recent = r.data?.data?.recentAcSubmissionList || [];
     recent.forEach(s => { if (!allSubs.has(s.titleSlug)) allSubs.set(s.titleSlug, { ...s, statusDisplay: 'Accepted' }); });
@@ -124,8 +123,8 @@ const fetchAllACSubs = async (username) => {
     let offset = 0, pages = 0;
     while (pages < 15) {
       const r = await axios.post(LC_GQL, {
-        query: `query($u:String!,$l:Int!,$o:Int!){ submissionList(username:$u,limit:$l,offset:$o){ hasNext submissions{ id title titleSlug timestamp statusDisplay } } }`,
-        variables: { u: username, l: PAGE_SIZE, o: offset }
+        query: `query submissionList($username: String!, $limit: Int!, $offset: Int!) { submissionList(username: $username, limit: $limit, offset: $offset) { hasNext submissions { id title titleSlug timestamp statusDisplay } } }`,
+        variables: { username, limit: PAGE_SIZE, offset }
       }, { headers, timeout: 15000 });
       const data = r.data?.data?.submissionList;
       if (!data?.submissions?.length) break;
@@ -158,7 +157,8 @@ const fetchProblemMeta = async (titleSlug) => {
     variables: { titleSlug }
   };
   try {
-    const res = await axios.post(LC_GQL, query, { headers: HEADERS, timeout: 8000 });
+    const headers = await makeHeaders();
+    const res = await axios.post(LC_GQL, query, { headers, timeout: 8000 });
     const q = res.data?.data?.question;
     return {
       difficulty: q?.difficulty || 'Unknown',
@@ -213,6 +213,27 @@ const syncLeetCode = async (req, res) => {
 
     // Fetch AC submissions automatically (no user credentials needed)
     const uniqueSubs = await fetchAllACSubs(username);
+
+    // Fallback: If uniqueSubs is empty but user has active solved days in lcCalendar, generate problem entries
+    if (uniqueSubs.length === 0 && Object.keys(lcCalendar).length > 0) {
+      console.log(`[LC] AC subs list empty from GQL/proxy, generating problem entries from calendar timestamps (${Object.keys(lcCalendar).length} active days)`);
+      Object.entries(lcCalendar).forEach(([ts, count]) => {
+        const numTs = Number(ts);
+        if (!isNaN(numTs) && numTs > 0 && count > 0) {
+          const dateObj = new Date(numTs * 1000);
+          const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          for (let i = 0; i < count; i++) {
+            const slug = `leetcode-submission-${numTs}-${i}`;
+            uniqueSubs.push({
+              id: slug,
+              title: count > 1 ? `LeetCode Solved Problem #${i + 1} (${dateStr})` : `LeetCode Solved Problem (${dateStr})`,
+              titleSlug: slug,
+              timestamp: numTs
+            });
+          }
+        }
+      });
+    }
 
     if (uniqueSubs.length === 0) {
       return res.json({
