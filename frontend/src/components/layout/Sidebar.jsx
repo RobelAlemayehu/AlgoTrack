@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { id: 'Review',    icon: <Repeat size={16} />,          label: 'Review Queue' },
   { id: 'Analytics', icon: <BarChart3 size={16} />,       label: 'Analytics' },
   { id: 'Notes',     icon: <BookOpen size={16} />,        label: 'Notes' },
+  { id: 'Groups',    icon: <Users size={16} />,           label: 'Study Groups' },
   { id: 'Compare',   icon: <Users size={16} />,           label: 'Compare' },
   { id: 'Profile',   icon: <User size={16} />,            label: 'Profile' },
 ];

@@ -152,4 +152,126 @@ const getRecommendations = async (req, res) => {
   }
 };
 
-module.exports = { getRecommendations };
+/**
+ * POST /api/recommend/similar
+ * Returns 3-5 similar unsolved problems sharing 2+ tags and a similar difficulty rating.
+ * Body: { title, platform, problemId, difficulty, tags }
+ */
+const getSimilarProblems = async (req, res) => {
+  try {
+    const { title, platform, problemId, difficulty, tags } = req.body;
+    const targetTags = Array.isArray(tags) ? tags : [];
+
+    // Fetch user's non-archived solved problems
+    const solvedProblems = await Problem.find({ userId: req.user.id, archived: { $ne: true } });
+    const solvedIdSet = new Set(solvedProblems.map(p => (p.problemId || '').toLowerCase()));
+    const solvedTitleSet = new Set(solvedProblems.map(p => (p.title || '').toLowerCase()));
+
+    const currentRating = parseInt(difficulty) || null;
+    const isCF = platform === 'Codeforces' || (problemId && /^CF-/i.test(problemId));
+
+    const suggestions = [];
+
+    if (isCF && targetTags.length > 0) {
+      // Query Codeforces API for live unsolved problems with matching primary tag
+      const primaryTag = targetTags[0];
+      try {
+        const cfRes = await axios.get(
+          `https://codeforces.com/api/problemset.problems?tags=${encodeURIComponent(primaryTag)}`,
+          { family: 4, timeout: 10000 }
+        );
+
+        if (cfRes.data.status === 'OK') {
+          const probs = cfRes.data.result.problems || [];
+          const candidates = [];
+
+          probs.forEach(p => {
+            const idStr = `CF-${p.contestId}${p.index}`.toLowerCase();
+            if (solvedIdSet.has(idStr) || (problemId && idStr === problemId.toLowerCase())) return;
+            if (solvedTitleSet.has(p.name.toLowerCase())) return;
+
+            const pTags = p.tags || [];
+            const overlap = pTags.filter(t => targetTags.includes(t));
+            if (overlap.length === 0) return;
+
+            const rating = p.rating || 1200;
+            const diffRating = currentRating ? Math.abs(rating - currentRating) : 0;
+            if (currentRating && diffRating > 400) return;
+
+            const score = (overlap.length * 100) - diffRating;
+            candidates.push({
+              id: `CF-${p.contestId}${p.index}`,
+              title: p.name,
+              platform: 'Codeforces',
+              difficulty: String(rating),
+              tags: pTags,
+              url: `https://codeforces.com/problemset/problem/${p.contestId}/${p.index}`,
+              overlapCount: overlap.length,
+              overlapTags: overlap,
+              score,
+              reason: `Shares ${overlap.slice(0, 3).join(', ')} — similar rating (${rating})`
+            });
+          });
+
+          candidates.sort((a, b) => b.score - a.score);
+          suggestions.push(...candidates.slice(0, 5));
+        }
+      } catch (cfErr) {
+        console.log('[Recommend] CF similar fetch error:', cfErr.message);
+      }
+    }
+
+    // If fewer than 3 suggestions (or for LeetCode/General), pull from curated problem bank
+    if (suggestions.length < 3) {
+      const LEETCODE_BANK = [
+        { title: 'Two Sum', platform: 'LeetCode', difficulty: 'Easy', tags: ['Array', 'Hash Table'], url: 'https://leetcode.com/problems/two-sum/' },
+        { title: '3Sum', platform: 'LeetCode', difficulty: 'Medium', tags: ['Array', 'Two Pointers', 'Sorting'], url: 'https://leetcode.com/problems/3sum/' },
+        { title: 'Container With Most Water', platform: 'LeetCode', difficulty: 'Medium', tags: ['Array', 'Two Pointers', 'Greedy'], url: 'https://leetcode.com/problems/container-with-most-water/' },
+        { title: 'Best Time to Buy and Sell Stock', platform: 'LeetCode', difficulty: 'Easy', tags: ['Array', 'Dynamic Programming'], url: 'https://leetcode.com/problems/best-time-to-buy-and-sell-stock/' },
+        { title: 'Climbing Stairs', platform: 'LeetCode', difficulty: 'Easy', tags: ['Math', 'Dynamic Programming', 'Memoization'], url: 'https://leetcode.com/problems/climbing-stairs/' },
+        { title: 'Coin Change', platform: 'LeetCode', difficulty: 'Medium', tags: ['Array', 'Dynamic Programming', 'BFS'], url: 'https://leetcode.com/problems/coin-change/' },
+        { title: 'Longest Common Subsequence', platform: 'LeetCode', difficulty: 'Medium', tags: ['String', 'Dynamic Programming'], url: 'https://leetcode.com/problems/longest-common-subsequence/' },
+        { title: 'Word Break', platform: 'LeetCode', difficulty: 'Medium', tags: ['Hash Table', 'String', 'Dynamic Programming', 'Trie'], url: 'https://leetcode.com/problems/word-break/' },
+        { title: 'Course Schedule', platform: 'LeetCode', difficulty: 'Medium', tags: ['Depth-First Search', 'Breadth-First Search', 'Graph', 'Topological Sort'], url: 'https://leetcode.com/problems/course-schedule/' },
+        { title: 'Number of Islands', platform: 'LeetCode', difficulty: 'Medium', tags: ['Array', 'Depth-First Search', 'Breadth-First Search', 'Union Find', 'Matrix'], url: 'https://leetcode.com/problems/number-of-islands/' },
+        { title: 'Valid Anagram', platform: 'LeetCode', difficulty: 'Easy', tags: ['Hash Table', 'String', 'Sorting'], url: 'https://leetcode.com/problems/valid-anagram/' },
+        { title: 'Group Anagrams', platform: 'LeetCode', difficulty: 'Medium', tags: ['Array', 'Hash Table', 'String', 'Sorting'], url: 'https://leetcode.com/problems/group-anagrams/' }
+      ];
+
+      const normTargetTags = targetTags.map(t => t.toLowerCase());
+
+      LEETCODE_BANK.forEach(item => {
+        if (solvedTitleSet.has(item.title.toLowerCase())) return;
+        if (title && item.title.toLowerCase() === title.toLowerCase()) return;
+        if (suggestions.some(s => s.title.toLowerCase() === item.title.toLowerCase())) return;
+
+        const overlap = item.tags.filter(t => normTargetTags.some(nt => nt === t.toLowerCase() || t.toLowerCase().includes(nt) || nt.includes(t.toLowerCase())));
+        if (overlap.length > 0 || String(difficulty).toLowerCase() === item.difficulty.toLowerCase()) {
+          suggestions.push({
+            id: item.url,
+            title: item.title,
+            platform: item.platform,
+            difficulty: item.difficulty,
+            tags: item.tags,
+            url: item.url,
+            overlapCount: overlap.length,
+            overlapTags: overlap,
+            reason: overlap.length > 0
+              ? `Shares ${overlap.join(', ')} — ${item.difficulty} difficulty`
+              : `Matches ${item.difficulty} difficulty tier for target practice`
+          });
+        }
+      });
+    }
+
+    res.json({
+      similar: suggestions.slice(0, 5)
+    });
+
+  } catch (err) {
+    console.error('getSimilarProblems error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { getRecommendations, getSimilarProblems };

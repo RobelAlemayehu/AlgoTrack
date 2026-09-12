@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, BookOpen, Code, Edit3, Save, X, ChevronRight, FileText, Terminal, Zap, HelpCircle, ExternalLink, Tag, Lightbulb, CheckCircle2, Lock } from 'lucide-react';
+import SimilarProblemsSection from '../components/SimilarProblemsSection';
 
 const TABS = ['Explanation', 'Code', 'Complexity', 'Need Help? (Hints)'];
 
@@ -58,7 +59,7 @@ function getOfficialLink(problem) {
 
 const TIER_RANKS = { none: 0, nudge: 1, approach: 2, solution: 3 };
 
-export default function NotesView({ problems, onUpdateNote, onUpdateHintTier }) {
+export default function NotesView({ problems, onUpdateNote, onUpdateHintTier, token }) {
   const [selectedId, setSelectedId] = useState(null);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('Explanation');
@@ -486,6 +487,9 @@ export default function NotesView({ problems, onUpdateNote, onUpdateHintTier }) 
                   </div>
                 </div>
               )}
+
+              {/* Similar Problem Suggestions */}
+              <SimilarProblemsSection problem={selected} token={token} />
             </div>
           </>
         ) : (

@@ -19,6 +19,7 @@ import RoadmapsView  from './views/RoadmapsView';
 import DrillView     from './views/DrillView';
 import SimulatorView from './views/SimulatorView';
 import PublicProfileView from './views/PublicProfileView';
+import GroupsView    from './views/GroupsView';
 
 const API = import.meta.env.VITE_API || 'http://localhost:5000';
 
@@ -437,7 +438,9 @@ export default function App() {
       case 'Analytics':
         return <AnalyticsView problems={problems} lcStats={lcStats} lcCalendar={lcCalendar} />;
       case 'Notes':
-        return <NotesView problems={problems} onUpdateNote={handleUpdateNote} onUpdateHintTier={handleUpdateHintTier} />;
+        return <NotesView problems={problems} onUpdateNote={handleUpdateNote} onUpdateHintTier={handleUpdateHintTier} token={token} />;
+      case 'Groups':
+        return <GroupsView token={token} showPopup={showPopup} />;
       case 'Settings':
         return <SettingsView userSettings={userSettings} setUserSettings={setUserSettings} token={token} showPopup={showPopup} theme={theme} onThemeToggle={toggleTheme} />;
       case 'Compare':
