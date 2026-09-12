@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
 import { X, Plus, Save } from 'lucide-react';
 
+import CustomSelect from './ui/CustomSelect';
+
 const API = import.meta.env.VITE_API || 'https://algotrack-1.onrender.com';
 const PLATFORMS = ['LeetCode', 'Codeforces', 'AtCoder', 'CodeChef', 'HackerRank', 'Custom'];
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard', '800', '1200', '1600', '2000'];
+
+const platformOptions = PLATFORMS.map(p => ({ value: p, label: p }));
+const difficultyOptions = DIFFICULTIES.map(d => ({ value: d, label: d }));
 
 export default function ManualProblemModal({ isOpen, onClose, token, onDataRefresh }) {
   if (!isOpen) return null;
@@ -95,25 +100,19 @@ export default function ManualProblemModal({ isOpen, onClose, token, onDataRefre
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>PLATFORM</label>
-              <select
+              <CustomSelect
                 value={form.platform}
-                onChange={e => setForm(f => ({ ...f, platform: e.target.value }))}
-                className="input-field"
-                style={{ width: '100%', fontSize: 12, height: 32, padding: '4px 8px' }}
-              >
-                {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
+                options={platformOptions}
+                onChange={val => setForm(f => ({ ...f, platform: val }))}
+              />
             </div>
             <div>
               <label style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>DIFFICULTY / RATING</label>
-              <select
+              <CustomSelect
                 value={form.difficulty}
-                onChange={e => setForm(f => ({ ...f, difficulty: e.target.value }))}
-                className="input-field"
-                style={{ width: '100%', fontSize: 12, height: 32, padding: '4px 8px' }}
-              >
-                {DIFFICULTIES.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
+                options={difficultyOptions}
+                onChange={val => setForm(f => ({ ...f, difficulty: val }))}
+              />
             </div>
           </div>
 

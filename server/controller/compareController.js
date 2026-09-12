@@ -61,25 +61,28 @@ const compareUsers = async (req, res) => {
 
 function buildLocalStats(problems, user) {
   const lcS = user.lcStats || {};
-  const cfCount = problems.filter(p => p.platform === 'Codeforces').length;
-  const lcCount = lcS.total || problems.filter(p => p.platform === 'LeetCode').length;
+  const activeProblems = problems.filter(p => !p.archived);
+  const cfCount = activeProblems.filter(p => p.platform === 'Codeforces').length;
+  const lcCount = lcS.total || activeProblems.filter(p => p.platform === 'LeetCode').length;
 
   const tags = {};
-  problems.forEach(p => (p.tags || []).forEach(t => { tags[t] = (tags[t] || 0) + 1; }));
+  activeProblems.forEach(p => (p.tags || []).forEach(t => { tags[t] = (tags[t] || 0) + 1; }));
 
   return {
     username: user.username,
     handles: user.handles || {},
-    cfRating: user.cfRating || 0,
-    cfMaxRating: user.cfMaxRating || 0,
-    cfRank: user.cfRank || '',
+    cfRating: (user.handles?.codeforces && user.cfRating) ? user.cfRating : null,
+    cfMaxRating: (user.handles?.codeforces && user.cfMaxRating) ? user.cfMaxRating : null,
+    cfRank: user.handles?.codeforces ? (user.cfRank || 'Unrated') : 'Not provided',
     lcRanking: lcS.ranking || 0,
     totalSolved: cfCount + lcCount,
     cfSolved: cfCount,
+    cfTotal: cfCount,
     lcSolved: lcCount,
-    easy:   lcS.easy   || problems.filter(p => p.difficulty?.toLowerCase() === 'easy').length,
-    medium: lcS.medium || problems.filter(p => p.difficulty?.toLowerCase() === 'medium').length,
-    hard:   lcS.hard   || problems.filter(p => p.difficulty?.toLowerCase() === 'hard').length,
+    lcTotal: lcCount,
+    easy:   lcS.easy   || activeProblems.filter(p => p.difficulty?.toLowerCase() === 'easy').length,
+    medium: lcS.medium || activeProblems.filter(p => p.difficulty?.toLowerCase() === 'medium').length,
+    hard:   lcS.hard   || activeProblems.filter(p => p.difficulty?.toLowerCase() === 'hard').length,
     topTags: Object.entries(tags).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t, c]) => ({ tag: t, count: c }))
   };
 }
@@ -89,17 +92,23 @@ function buildTargetStats(cfData, lcData, cfHandle, lcHandle) {
   const lcTotal = lcData?.total || 0;
   const tags = {};
   (cfData?.tagCounts || []).forEach(({ tag, count }) => { tags[tag] = (tags[tag] || 0) + count; });
+  (lcData?.tagCounts || []).forEach(({ tag, count }) => { tags[tag] = (tags[tag] || 0) + count; });
+
+  const usernameDisplay = cfHandle && lcHandle ? `${lcHandle} / ${cfHandle}` : (lcHandle || cfHandle || 'Opponent');
 
   return {
-    username: cfHandle || lcHandle,
+    username: usernameDisplay,
+    handle: usernameDisplay,
     handles: { codeforces: cfHandle, leetcode: lcHandle },
-    cfRating: cfData?.rating || 0,
-    cfMaxRating: cfData?.maxRating || 0,
-    cfRank: cfData?.rank || '',
+    cfRating: cfHandle ? (cfData?.rating ?? null) : null,
+    cfMaxRating: cfHandle ? (cfData?.maxRating ?? null) : null,
+    cfRank: cfHandle ? (cfData?.rank || 'Unrated') : 'Not provided',
     lcRanking: lcData?.ranking || 0,
     totalSolved: cfCount + lcTotal,
     cfSolved: cfCount,
+    cfTotal: cfCount,
     lcSolved: lcTotal,
+    lcTotal: lcTotal,
     easy:   lcData?.easy   || 0,
     medium: lcData?.medium || 0,
     hard:   lcData?.hard   || 0,
@@ -146,6 +155,11 @@ async function fetchLCStats(username) {
           submitStatsGlobal {
             acSubmissionNum { difficulty count }
           }
+          tagProblemCounts {
+            advanced { tagName problemsSolved }
+            intermediate { tagName problemsSolved }
+            fundamental { tagName problemsSolved }
+          }
         }
       }`,
     variables: { username }
@@ -155,12 +169,23 @@ async function fetchLCStats(username) {
   if (!mu) return null;
 
   const nums = mu.submitStatsGlobal?.acSubmissionNum || [];
+  const tagCounts = {};
+  const tpc = mu.tagProblemCounts || {};
+  ['advanced', 'intermediate', 'fundamental'].forEach(tier => {
+    (tpc[tier] || []).forEach(item => {
+      if (item.tagName && item.problemsSolved > 0) {
+        tagCounts[item.tagName] = item.problemsSolved;
+      }
+    });
+  });
+
   return {
     ranking: mu.profile?.ranking || 0,
     easy:   nums.find(x => x.difficulty === 'Easy')?.count   || 0,
     medium: nums.find(x => x.difficulty === 'Medium')?.count || 0,
     hard:   nums.find(x => x.difficulty === 'Hard')?.count   || 0,
     total:  nums.find(x => x.difficulty === 'All')?.count    || 0,
+    tagCounts: Object.entries(tagCounts).map(([tag, count]) => ({ tag, count }))
   };
 }
 

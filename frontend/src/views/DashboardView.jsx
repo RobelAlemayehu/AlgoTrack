@@ -107,8 +107,18 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
     } catch {}
   };
 
-  // Calculate REAL solves in the last 7 days
+  // Calculate REAL time spent & solves in the last 7 days
   const weekAgoMs = Date.now() - (7 * 86400000);
+
+  // Sum real time spent logged via timer for problems solved/worked on this week
+  const totalSecsThisWeek = safe.reduce((acc, p) => {
+    const dateVal = p.solvedAt || p.updatedAt || p.createdAt;
+    if (dateVal && new Date(dateVal).getTime() >= weekAgoMs && p.timeSpent) {
+      return acc + Number(p.timeSpent);
+    }
+    return acc;
+  }, 0);
+
   const cfThisWeek = safe.filter(p => {
     if (p.platform === 'Codeforces' && p.solvedAt) {
       return new Date(p.solvedAt).getTime() >= weekAgoMs;
@@ -124,6 +134,21 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
   const thisWeekCount = cfThisWeek + lcThisWeek;
   const weeklyTarget = userTarget || 5;
   const weeklyPct = Math.min(100, Math.round((thisWeekCount / weeklyTarget) * 100));
+
+  let timeThisWeekDisplay = '0h';
+  if (totalSecsThisWeek > 0) {
+    const hrs = Math.floor(totalSecsThisWeek / 3600);
+    const mins = Math.floor((totalSecsThisWeek % 3600) / 60);
+    if (hrs > 0) timeThisWeekDisplay = `${hrs}h ${mins > 0 ? mins + 'm' : ''}`;
+    else timeThisWeekDisplay = `${mins}m`;
+  } else if (thisWeekCount > 0) {
+    const estMins = thisWeekCount * 25;
+    const hrs = Math.floor(estMins / 60);
+    const mins = estMins % 60;
+    timeThisWeekDisplay = hrs > 0 ? `${hrs}h ${mins > 0 ? mins + 'm' : ''}` : `${mins}m`;
+  } else {
+    timeThisWeekDisplay = '0h';
+  }
 
   const recent = sorted.slice(0, 8);
 
@@ -193,7 +218,7 @@ export default function DashboardView({ problems, streak, lcStats, cfRating, cfR
           <p style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginBottom: 6 }}>TIME THIS WEEK</p>
           <div className="stat-value" style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 4, fontSize: 18 }}>
             <Clock size={16} />
-            {Math.max(1, Math.round(thisWeekCount * 0.5))}h
+            {timeThisWeekDisplay}
           </div>
         </div>
       </div>

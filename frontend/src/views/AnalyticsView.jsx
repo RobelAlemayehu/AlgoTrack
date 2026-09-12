@@ -32,7 +32,7 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
     const lc     = lcStats?.total  ?? safe.filter(p => p.platform === 'LeetCode').length;
     const cf     = safe.filter(p => p.platform === 'Codeforces').length;
 
-    // Weekly activity — merge CF DB dates + LC calendar using real solve dates
+    // Weekly activity — calculated from verified solved problems
     const weekly = [];
     const now = new Date();
     for (let i = 9; i >= 0; i--) {
@@ -41,21 +41,17 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
       start.setHours(0, 0, 0, 0);
       const end = new Date(start); end.setDate(end.getDate() + 7);
 
-      const cfCount = safe.filter(p => {
+      const count = safe.filter(p => {
+        if (p.archived) return false;
         const dateVal = p.solvedAt || p.syncedAt || p.createdAt;
         if (!dateVal) return false;
         const d = new Date(dateVal);
         return d >= start && d < end;
       }).length;
 
-      const lcCount = Object.entries(calMap).reduce((acc, [ts, cnt]) => {
-        const d = new Date(parseInt(ts) * 1000);
-        return (d >= start && d < end) ? acc + cnt : acc;
-      }, 0);
-
       weekly.push({
         label: start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        count: cfCount + lcCount
+        count
       });
     }
 
@@ -64,28 +60,28 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
     return { easy, medium, hard, lc, cf, weekly, maxWeekly, total: lc + cf };
   }, [safe, lcStats, calMap]);
 
-  // Heatmap — LeetCode-style 13-Month block layout with gaps, active days, max streak, current streak
-  // Dynamically computed by merging Codeforces MongoDB problems + LeetCode API calendar
+  // Heatmap — 13-Month block layout with single source of truth (Problem collection)
   const heatmapData = useMemo(() => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
 
     const countMap = {};
 
-    // 1. Codeforces problems from MongoDB backend API
+    // Single source of truth: verified problem records
     safe.forEach(p => {
+      if (p.archived) return;
       const dateKey = getLocalDateKey(p.solvedAt || p.syncedAt || p.createdAt);
       if (dateKey) {
         countMap[dateKey] = (countMap[dateKey] || 0) + 1;
       }
     });
 
-    // 2. LeetCode submission calendar from backend API
+    // Fallback: incorporate historical LeetCode submission dates if no MongoDB problem exists for that day
     Object.entries(calMap).forEach(([ts, cnt]) => {
       const numTs = Number(ts);
       if (!isNaN(numTs) && numTs > 0 && cnt > 0) {
         const dateKey = getLocalDateKey(numTs * 1000);
-        if (dateKey) {
-          countMap[dateKey] = (countMap[dateKey] || 0) + cnt;
+        if (dateKey && !countMap[dateKey]) {
+          countMap[dateKey] = cnt;
         }
       }
     });
@@ -286,7 +282,7 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
                               style={{
                                 visibility: cell.isValid ? 'visible' : 'hidden'
                               }}
-                              title={cell.isValid ? `${cell.date}: ${cell.count} problem${cell.count === 1 ? '' : 's'}` : ''}
+                              title={cell.isValid ? `${cell.count} problem${cell.count === 1 ? '' : 's'} solved on ${cell.date}` : ''}
                             />
                           ))}
                         </div>

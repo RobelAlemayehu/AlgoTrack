@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 
-export default function CustomSelect({ value, options, onChange, placeholder = 'Select...' }) {
+export default function CustomSelect({ value, options = [], onChange, placeholder = 'Select...', style = {}, minWidth }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  const selectedOption = options.find(o => o.value === value) || options[0];
+  const safeOptions = Array.isArray(options) ? options : [];
+  const selectedOption = safeOptions.find(o => o.value === value) || safeOptions[0];
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -18,7 +19,7 @@ export default function CustomSelect({ value, options, onChange, placeholder = '
   }, []);
 
   return (
-    <div ref={dropdownRef} style={{ position: 'relative', width: '100%', minWidth: 180 }}>
+    <div ref={dropdownRef} style={{ position: 'relative', width: '100%', minWidth: minWidth !== undefined ? minWidth : 140, ...style }}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -65,7 +66,7 @@ export default function CustomSelect({ value, options, onChange, placeholder = '
             overflowY: 'auto'
           }}
         >
-          {options.map((opt) => {
+          {safeOptions.map((opt) => {
             const isSelected = opt.value === value;
             return (
               <div

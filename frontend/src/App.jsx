@@ -18,21 +18,49 @@ import ProfileView   from './views/ProfileView';
 
 const API = import.meta.env.VITE_API || 'https://algotrack-1.onrender.com';
 
-function getUtcDayStr(dateInput) {
+function getLocalDateStr(dateInput) {
   if (!dateInput) return null;
   const d = new Date(dateInput);
   if (isNaN(d.getTime())) return null;
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(d.getUTCDate()).padStart(2, '0');
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+function hasSolvedToday(problems = [], lcCalendar = {}) {
+  const todayStr = getLocalDateStr(new Date());
+  if (!todayStr) return false;
+
+  // 1. Check MongoDB problems (Codeforces, LeetCode, Manual) using solvedAt
+  const solvedInDb = (problems || []).some(p => {
+    if (p.archived) return false;
+    const solveDate = p.solvedAt || p.createdAt;
+    return getLocalDateStr(solveDate) === todayStr;
+  });
+
+  if (solvedInDb) return true;
+
+  // 2. Check LeetCode calendar timestamps
+  const solvedInLcCal = Object.keys(lcCalendar || {}).some(ts => {
+    const count = lcCalendar[ts];
+    if (count > 0) {
+      const num = Number(ts);
+      if (!isNaN(num) && num > 0) {
+        return getLocalDateStr(num * 1000) === todayStr;
+      }
+    }
+    return false;
+  });
+
+  return solvedInLcCal;
 }
 
 function calcStreak(problems, lcCalendar) {
   const daySet = new Set();
   (problems || []).forEach(p => {
     if (p.archived) return;
-    const dayStr = getUtcDayStr(p.solvedAt || p.syncedAt || p.createdAt);
+    const dayStr = getLocalDateStr(p.solvedAt || p.createdAt);
     if (dayStr) daySet.add(dayStr);
   });
 
@@ -41,7 +69,7 @@ function calcStreak(problems, lcCalendar) {
     if (count > 0) {
       const num = Number(ts);
       if (!isNaN(num) && num > 0) {
-        const dayStr = getUtcDayStr(num * 1000);
+        const dayStr = getLocalDateStr(num * 1000);
         if (dayStr) daySet.add(dayStr);
       }
     }
@@ -50,25 +78,22 @@ function calcStreak(problems, lcCalendar) {
   if (daySet.size === 0) return 0;
 
   const now = new Date();
-  const todayStr = getUtcDayStr(now);
-  const yesterdayStr = getUtcDayStr(now.getTime() - 86400000);
+  const todayStr = getLocalDateStr(now);
+  const yesterdayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const yesterdayStr = getLocalDateStr(yesterdayDate);
 
   if (!daySet.has(todayStr) && !daySet.has(yesterdayStr)) return 0;
 
   const startStr = daySet.has(todayStr) ? todayStr : yesterdayStr;
   const parts = startStr.split('-').map(Number);
-  const curr = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+  const curr = new Date(parts[0], parts[1] - 1, parts[2]);
 
   let streak = 0;
   while (true) {
-    const y = curr.getUTCFullYear();
-    const m = String(curr.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(curr.getUTCDate()).padStart(2, '0');
-    const checkStr = `${y}-${m}-${day}`;
-
+    const checkStr = getLocalDateStr(curr);
     if (daySet.has(checkStr)) {
       streak++;
-      curr.setUTCDate(curr.getUTCDate() - 1);
+      curr.setDate(curr.getDate() - 1);
     } else {
       break;
     }
@@ -130,9 +155,7 @@ export default function App() {
   useEffect(() => {
     if (!token) return;
     const checkActivity = () => {
-      const todayStr = getUtcDayStr(new Date());
-      const solvedToday = (problems || []).some(p => !p.archived && getUtcDayStr(p.solvedAt || p.syncedAt || p.createdAt) === todayStr)
-                       || Object.keys(lcCalendar || {}).some(ts => (lcCalendar[ts] > 0) && getUtcDayStr(Number(ts) * 1000) === todayStr);
+      const solvedToday = hasSolvedToday(problems, lcCalendar);
 
       const now = new Date();
       const endOfDay = new Date();
@@ -165,6 +188,11 @@ export default function App() {
       });
       if (profRes.ok) {
         const profData = await profRes.json();
+        setUser(prev => {
+          const updated = { ...(prev || {}), ...profData };
+          localStorage.setItem('user', JSON.stringify(updated));
+          return updated;
+        });
         setUserSettings({
           leetcodeHandle:   profData.handles?.leetcode   || '',
           codeforcesHandle: profData.handles?.codeforces || '',
@@ -254,30 +282,50 @@ export default function App() {
     setLoading(true);
     try {
       const reqs = [];
-      if (userSettings.codeforcesHandle) reqs.push(
-        fetch(`${API}/api/sync/codeforces?handle=${userSettings.codeforcesHandle}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }).then(r => r.json()).then(d => {
-          if (d.cfRating)    setCfRating(d.cfRating);
-          if (d.cfMaxRating) setCfMaxRating(d.cfMaxRating);
-          if (d.cfRank)      setCfRank(d.cfRank);
-          return d;
-        })
-      );
-      if (userSettings.leetcodeHandle) reqs.push(
-        fetch(`${API}/api/sync/leetcode`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ handle: userSettings.leetcodeHandle })
-        }).then(r => r.json()).then(d => {
-          if (d.lcStats)    setLcStats(d.lcStats);
-          return d;
-        })
-      );
-      await Promise.allSettled(reqs);
+      if (userSettings.codeforcesHandle) {
+        reqs.push(
+          fetch(`${API}/api/sync/codeforces?handle=${userSettings.codeforcesHandle}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          }).then(async r => {
+            const data = await r.json();
+            return { platform: 'Codeforces', ok: r.ok, data };
+          })
+        );
+      }
+      if (userSettings.leetcodeHandle) {
+        reqs.push(
+          fetch(`${API}/api/sync/leetcode`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ handle: userSettings.leetcodeHandle })
+          }).then(async r => {
+            const data = await r.json();
+            if (data.lcStats) setLcStats(data.lcStats);
+            return { platform: 'LeetCode', ok: r.ok, data };
+          })
+        );
+      }
+
+      const results = await Promise.allSettled(reqs);
       await fetchData();
       setLastSyncTime(new Date());
-      showPopup('Sync Complete!', `Data updated successfully.`, 'success');
+
+      const errors = [];
+      results.forEach(res => {
+        if (res.status === 'fulfilled') {
+          if (!res.value.ok || res.value.data.error) {
+            errors.push(`${res.value.platform}: ${res.value.data.error || 'Failed to fetch data'}`);
+          }
+        } else {
+          errors.push('Network error fetching sync data');
+        }
+      });
+
+      if (errors.length > 0) {
+        showPopup('Sync Notice', errors.join(' | '), 'warning');
+      } else {
+        showPopup('Sync Complete!', 'Data updated successfully.', 'success');
+      }
     } catch (err) {
       showPopup('Sync Failed', 'Check your internet connection.', 'error');
     } finally { setLoading(false); }

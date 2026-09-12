@@ -133,15 +133,15 @@ export default function CompareView({ token }) {
               </div>
               <div style={{ textAlign: 'center', fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>VS</div>
               <div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent)' }}>{them?.handle || 'Opponent'}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent)' }}>{them?.username || them?.handle || 'Opponent'}</div>
               </div>
             </div>
 
             <StatBlock label="Total Solved" me={me?.totalSolved} them={them?.totalSolved} />
-            <StatBlock label="LeetCode Solved" me={me?.lcTotal} them={them?.lcTotal} />
-            <StatBlock label="Codeforces Solved" me={me?.cfTotal} them={them?.cfTotal} />
-            <StatBlock label="Codeforces Rating" me={me?.cfRating} them={them?.cfRating} />
-            <StatBlock label="CF Max Rating" me={me?.cfMaxRating} them={them?.cfMaxRating} />
+            <StatBlock label="LeetCode Solved" me={me?.lcSolved ?? me?.lcTotal} them={them?.lcSolved ?? them?.lcTotal} />
+            <StatBlock label="Codeforces Solved" me={me?.cfSolved ?? me?.cfTotal} them={them?.cfSolved ?? them?.cfTotal} />
+            <StatBlock label="Codeforces Rating" me={me?.cfRating !== null && me?.cfRating !== undefined ? me?.cfRating : 'N/A'} them={them?.cfRating !== null && them?.cfRating !== undefined ? them?.cfRating : 'N/A'} />
+            <StatBlock label="CF Max Rating" me={me?.cfMaxRating !== null && me?.cfMaxRating !== undefined ? me?.cfMaxRating : 'N/A'} them={them?.cfMaxRating !== null && them?.cfMaxRating !== undefined ? them?.cfMaxRating : 'N/A'} />
           </div>
 
           {/* Topic comparison */}

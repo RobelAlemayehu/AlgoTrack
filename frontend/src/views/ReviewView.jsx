@@ -5,10 +5,35 @@ const API = import.meta.env.VITE_API || 'https://algotrack-1.onrender.com';
 
 export default function ReviewView({ token, showPopup, onDataRefresh }) {
   const [loading, setLoading] = useState(true);
+  const [ratingLoading, setRatingLoading] = useState(false);
+  const [showSolution, setShowSolution] = useState(false);
   const [dueProblems, setDueProblems] = useState([]);
   const [totalInReview, setTotalInReview] = useState(0);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
+
+  const fetchDue = async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/api/review/due`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDueProblems(data.dueProblems || []);
+        setTotalInReview(data.totalInReview || 0);
+      }
+    } catch (err) {
+      console.error('Failed to fetch due reviews:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDue();
+  }, [token]);
 
   // Keyboard shortcut listener (1: again, 2: hard, 3: good, 4: easy, Space: flip)
   useEffect(() => {
@@ -193,7 +218,7 @@ export default function ReviewView({ token, showPopup, onDataRefresh }) {
 
                   {currentProb.explanation ? (
                     <div>
-                      <h4 style={{ fontSize: 11, textTransform: 'uppercase', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginBottom: 4 }}>Intuition & Strategy</h4>
+                      <h4 style={{ fontSize: 11, textTransform: 'uppercase', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginBottom: 4 }}>Intuition &amp; Strategy</h4>
                       <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5, background: 'var(--bg-base)', padding: 10, borderRadius: 6, border: '1px solid var(--border)', whiteSpace: 'pre-wrap', maxHeight: 140, overflowY: 'auto' }}>
                         {currentProb.explanation}
                       </div>

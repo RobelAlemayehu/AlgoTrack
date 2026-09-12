@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Layers, ChevronRight, Move, AlertCircle } from 'lucide-react';
+import CustomSelect from './ui/CustomSelect';
 
 const COLUMNS = [
   { id: 'To Do', title: 'To Do', color: 'var(--accent)', bg: 'rgba(240,136,62,0.08)' },
@@ -7,6 +8,8 @@ const COLUMNS = [
   { id: 'Solved', title: 'Solved', color: 'var(--cf-green)', bg: 'rgba(63,185,80,0.08)' },
   { id: 'Needs Review', title: 'Needs Review', color: 'var(--purple-400)', bg: 'rgba(163,113,247,0.08)' }
 ];
+
+const columnOptions = COLUMNS.map(c => ({ value: c.id, label: c.title }));
 
 function getRatingClass(d) {
   if (!d) return 'rating-gray';
@@ -152,28 +155,14 @@ export default function KanbanBoard({ problems, onSelectProblem, onUpdateStatus,
                       </span>
 
                       {/* Quick Status Shift selector */}
-                      <select
-                        value={getProblemStatus(p)}
-                        onClick={e => e.stopPropagation()}
-                        onChange={e => {
-                          e.stopPropagation();
-                          onUpdateStatus(p._id, e.target.value);
-                        }}
-                        style={{
-                          fontSize: 10,
-                          fontFamily: 'var(--font-mono)',
-                          background: 'var(--bg-muted)',
-                          color: 'var(--text-secondary)',
-                          border: '1px solid var(--border)',
-                          borderRadius: 4,
-                          padding: '2px 4px',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {COLUMNS.map(c => (
-                          <option key={c.id} value={c.id}>{c.title}</option>
-                        ))}
-                      </select>
+                      <div onClick={e => e.stopPropagation()} style={{ width: 110 }}>
+                        <CustomSelect
+                          value={getProblemStatus(p)}
+                          options={columnOptions}
+                          minWidth={100}
+                          onChange={val => onUpdateStatus(p._id, val)}
+                        />
+                      </div>
                     </div>
 
                     {p.tags && p.tags.length > 0 && (
