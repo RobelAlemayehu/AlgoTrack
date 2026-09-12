@@ -50,6 +50,10 @@ const problemSchema = new mongoose.Schema({
             url: String
         }
     ],
+    solvedAt: {
+        type: Date,
+        default: Date.now
+    },
     syncedAt: {
         type: Date,
         default: Date.now
@@ -62,9 +66,28 @@ const problemSchema = new mongoose.Schema({
         type: String,
         default: 'Solved'
     },
+    // Spaced Repetition (SM-2 Algorithm)
+    review: {
+        enabled:      { type: Boolean, default: false },
+        nextReviewAt: { type: Date, default: null },
+        interval:     { type: Number, default: 1 },     // in days
+        easeFactor:   { type: Number, default: 2.5 },   // SM-2 default
+        repetitions:  { type: Number, default: 0 },
+        lastRating:   { type: String, enum: ['again', 'hard', 'good', 'easy'], default: null }
+    },
+    // Soft Delete (Safer Handle Changes - 30 day recovery)
+    archived: {
+        type: Boolean,
+        default: false
+    },
+    archivedAt: {
+        type: Date,
+        default: null
+    }
 },
     { timestamps: true }
 );
+
 
 problemSchema.index({ problemId: 1, userId: 1 }, { unique: true });
 

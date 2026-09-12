@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trophy, Code, Lock, Mail, User as UserIcon, Sparkles } from 'lucide-react';
+import { Lock, Mail, User as UserIcon, Terminal } from 'lucide-react';
 
 export default function AuthView({ onAuth, loading, error }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -17,26 +17,25 @@ export default function AuthView({ onAuth, loading, error }) {
     }}>
       {/* Left decorative panel */}
       <div className="auth-deco" style={{
-        width: '45%', background: 'linear-gradient(145deg, #0D1526 0%, #111827 100%)',
+        width: '45%', background: 'var(--bg-surface)',
         borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', padding: 48, position: 'relative', overflow: 'hidden'
+        alignItems: 'center', justifyContent: 'center', padding: 48, position: 'relative'
       }}>
-        {/* Glow orbs */}
-        <div style={{ position: 'absolute', top: '20%', left: '10%', width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '15%', right: '5%', width: 160, height: 160, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
-
-        <div className="animate-float" style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
+        <div style={{ textAlign: 'center', zIndex: 1 }}>
           <img src="/logo.png" alt="AlgoTrack Logo" style={{
-            width: 80, height: 80, borderRadius: 20, margin: '0 auto 24px',
-            boxShadow: '0 0 40px rgba(99,102,241,0.4)',
+            width: 64, height: 64, borderRadius: 10, margin: '0 auto 20px',
             display: 'block'
           }} />
-          <h1 style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-0.03em', marginBottom: 12 }}>
-            <span className="gradient-text">AlgoTrack</span>
+          <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 10, color: 'var(--text-primary)' }}>
+            AlgoTrack
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: 15, maxWidth: 280, lineHeight: 1.7 }}>
-            Track your competitive programming journey across LeetCode & Codeforces — all in one place.
+          <p style={{ color: 'var(--text-muted)', fontSize: 14, maxWidth: 280, lineHeight: 1.6 }}>
+            DSA & Competitive Programming progress tracker for LeetCode & Codeforces.
           </p>
+          <div style={{ marginTop: 24, padding: '8px 14px', borderRadius: 6, background: 'var(--bg-muted)', border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>
+            <Terminal size={14} />
+            <span>$ algotrack --sync</span>
+          </div>
         </div>
       </div>
 
@@ -44,42 +43,42 @@ export default function AuthView({ onAuth, loading, error }) {
       <div className="auth-form-panel" style={{
         flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32
       }}>
-        <div style={{ width: '100%', maxWidth: 380 }} className="animate-fade-in">
-          <div style={{ marginBottom: 32 }}>
-            <h2 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)', marginBottom: 6 }}>
-              {isLogin ? 'Welcome back' : 'Create account'}
+        <div style={{ width: '100%', maxWidth: 360 }} className="animate-fade-in">
+          <div style={{ marginBottom: 28 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
+              {isLogin ? 'Sign In' : 'Create Account'}
             </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-              {isLogin ? 'Sign in to your AlgoTrack account' : 'Start tracking your DSA journey'}
+            <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+              {isLogin ? 'Enter your credentials to access your dashboard' : 'Join AlgoTrack and track your DSA journey'}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {!isLogin && (
               <div style={{ position: 'relative' }}>
-                <UserIcon size={15} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <UserIcon size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input
                   className="input-field" type="text" placeholder="Username" required
-                  style={{ paddingLeft: 38 }}
+                  style={{ paddingLeft: 34 }}
                   value={form.username}
                   onChange={e => setForm({ ...form, username: e.target.value })}
                 />
               </div>
             )}
             <div style={{ position: 'relative' }}>
-              <Mail size={15} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <Mail size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
                 className="input-field" type="email" placeholder="Email address" required
-                style={{ paddingLeft: 38 }}
+                style={{ paddingLeft: 34 }}
                 value={form.email}
                 onChange={e => setForm({ ...form, email: e.target.value })}
               />
             </div>
             <div style={{ position: 'relative' }}>
-              <Lock size={15} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <Lock size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
                 className="input-field" type="password" placeholder="Password" required
-                style={{ paddingLeft: 38 }}
+                style={{ paddingLeft: 34 }}
                 value={form.password}
                 onChange={e => setForm({ ...form, password: e.target.value })}
               />
@@ -87,24 +86,24 @@ export default function AuthView({ onAuth, loading, error }) {
 
             {error && (
               <div style={{
-                padding: '10px 14px', borderRadius: 8,
-                background: 'var(--red-dim)', border: '1px solid rgba(239,68,68,0.25)',
-                color: 'var(--red)', fontSize: 13
+                padding: '8px 12px', borderRadius: 6,
+                background: 'var(--red-dim)', border: '1px solid rgba(255,123,114,0.3)',
+                color: 'var(--cf-red)', fontSize: 12
               }}>{error}</div>
             )}
 
-            <button className="btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center', marginTop: 4, padding: '11px' }}>
+            <button className="btn-primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center', marginTop: 4, padding: '10px' }}>
               {loading ? 'Processing…' : (isLogin ? 'Sign In' : 'Create Account')}
             </button>
           </form>
 
-          <div style={{ textAlign: 'center', marginTop: 20 }}>
+          <div style={{ textAlign: 'center', marginTop: 18 }}>
             <button
               onClick={() => setIsLogin(!isLogin)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)' }}
             >
               {isLogin ? "Don't have an account? " : "Already have an account? "}
-              <span style={{ color: 'var(--indigo-light)', fontWeight: 600 }}>
+              <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
                 {isLogin ? 'Sign up' : 'Sign in'}
               </span>
             </button>
@@ -114,3 +113,4 @@ export default function AuthView({ onAuth, loading, error }) {
     </div>
   );
 }
+

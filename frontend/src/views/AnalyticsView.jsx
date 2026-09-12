@@ -2,10 +2,10 @@ import React, { useMemo } from 'react';
 
 function StatMini({ label, value, sub, color }) {
   return (
-    <div className="glass" style={{ borderRadius: 12, padding: '16px 18px' }}>
-      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 8 }}>{label}</p>
-      <p style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>{value}</p>
-      <p style={{ fontSize: 11, color: color || 'var(--text-muted)', marginTop: 4, fontWeight: 600 }}>{sub}</p>
+    <div className="glass" style={{ borderRadius: 6, padding: '14px 16px' }}>
+      <p style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginBottom: 6 }}>{label}</p>
+      <p className="stat-value" style={{ color: 'var(--text-primary)' }}>{value}</p>
+      <p style={{ fontSize: 11, color: color || 'var(--text-muted)', marginTop: 4, fontWeight: 500 }}>{sub}</p>
     </div>
   );
 }
@@ -15,7 +15,6 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
   const calMap = (lcCalendar && typeof lcCalendar === 'object') ? lcCalendar : {};
 
   const stats = useMemo(() => {
-    // Use real LC API stats when available; fall back to DB count
     const easy   = lcStats?.easy   ?? safe.filter(p => p.difficulty?.toLowerCase() === 'easy').length;
     const medium = lcStats?.medium ?? safe.filter(p => p.difficulty?.toLowerCase() === 'medium').length;
     const hard   = lcStats?.hard   ?? safe.filter(p => p.difficulty?.toLowerCase() === 'hard').length;
@@ -49,31 +48,15 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
 
     const maxWeekly = Math.max(...weekly.map(w => w.count), 1);
 
-    // Streak — from CF DB data
-    const daySet = new Set(safe.map(p => {
-      const d = new Date(p.syncedAt || p.createdAt || 0);
-      d.setHours(0, 0, 0, 0);
-      return d.getTime();
-    }));
-    const sortedDays = [...daySet].sort((a, b) => b - a);
-    let streak = 0;
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    for (let i = 0; i < sortedDays.length; i++) {
-      const exp = new Date(today); exp.setDate(exp.getDate() - i);
-      if (sortedDays[i] === exp.getTime()) streak++;
-      else break;
-    }
-
-    return { easy, medium, hard, lc, cf, weekly, maxWeekly, streak, total: lc + cf };
+    return { easy, medium, hard, lc, cf, weekly, maxWeekly, total: lc + cf };
   }, [safe, lcStats, calMap]);
 
-  // Heatmap — merge real LC calendar (timestamp→count) with CF DB solve dates
+  // Heatmap — merge LC calendar (timestamp→count) with CF DB solve dates
   const heatmap = useMemo(() => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const start = new Date(today); start.setDate(today.getDate() - 364);
     while (start.getDay() !== 0) start.setDate(start.getDate() - 1);
 
-    // CF problems from DB
     const countMap = {};
     safe.forEach(p => {
       const d = new Date(p.syncedAt || p.createdAt || 0);
@@ -82,7 +65,6 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
       countMap[key] = (countMap[key] || 0) + 1;
     });
 
-    // LC calendar (unix seconds → count)
     Object.entries(calMap).forEach(([ts, cnt]) => {
       const d = new Date(parseInt(ts) * 1000);
       d.setHours(0, 0, 0, 0);
@@ -101,52 +83,51 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
         cur.setDate(cur.getDate() + 1);
       }
       weeks.push(week);
-      if (cur > today) break;
     }
     return weeks;
   }, [safe, calMap]);
 
-  // Total contributions = DB count + unique LC calendar days with activity
-  const lcCalDays = Object.keys(calMap).length;
-
   return (
-    <div className="animate-fade-in view-pad" style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 22 }}>
-      <div>
-        <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Analytics</h1>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
-          Your performance insights — LeetCode calendar + Codeforces data combined
-        </p>
+    <div className="animate-fade-in view-pad" style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Header */}
+      <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 14 }}>
+        <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Performance & Analytics</h1>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>Historical submission activity across LeetCode & Codeforces</p>
       </div>
 
-      {/* Stats row */}
+      {/* Mini stats rail */}
       <div className="grid-stats-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-        <StatMini label="Total Solved"   value={stats.total}               sub="Lifetime"           color="var(--emerald)" />
-        <StatMini label="Current Streak" value={`${stats.streak}d`}        sub="Keep it up!"    color="var(--orange)" />
-        <StatMini label="Hard Problems"  value={stats.hard}                sub={`${stats.total ? Math.round((stats.hard / stats.total) * 100) : 0}% of total`} color="var(--red)" />
-        <StatMini label="LC Active Days" value={lcCalDays || stats.weekly[9]?.count || 0} sub={lcCalDays ? 'from LC calendar' : 'this week'} color="var(--indigo-light)" />
+        <StatMini label="TOTAL SOLVED" value={stats.total} sub={`${stats.lc} LC · ${stats.cf} CF`} color="var(--accent)" />
+        <StatMini label="EASY" value={stats.easy} sub="Elementary DSA" color="var(--cf-green)" />
+        <StatMini label="MEDIUM" value={stats.medium} sub="Intermediate DSA" color="var(--lc-yellow)" />
+        <StatMini label="HARD" value={stats.hard} sub="Advanced DSA / CF Rated" color="var(--cf-red)" />
       </div>
 
-      {/* Heatmap */}
-      <div className="glass" style={{ borderRadius: 14, padding: '20px 22px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div>
-            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Activity Heatmap</h2>
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
-              {lcCalDays > 0 ? `Real LeetCode calendar merged with ${safe.filter(p=>p.platform==='Codeforces').length} Codeforces solves` : `${safe.length} contributions — sync LeetCode for real calendar data`}
-            </p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Less</span>
-            {[0,1,2,3,4].map(l => <div key={l} className={`heatmap-cell heatmap-${l}`} style={{ flexShrink: 0 }} />)}
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>More</span>
+      {/* 365-Day Activity Heatmap */}
+      <div className="glass" style={{ borderRadius: 6, padding: '18px 20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <h2 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>365-Day Solve Heatmap</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+            <span>Less</span>
+            <div className="heatmap-cell heatmap-0" />
+            <div className="heatmap-cell heatmap-1" />
+            <div className="heatmap-cell heatmap-2" />
+            <div className="heatmap-cell heatmap-3" />
+            <div className="heatmap-cell heatmap-4" />
+            <span>More</span>
           </div>
         </div>
-        <div style={{ overflowX: 'auto', paddingBottom: 8 }}>
-          <div style={{ display: 'flex', gap: 3, minWidth: 'max-content' }}>
+
+        <div className="heatmap-scroll" style={{ overflowX: 'auto', paddingBottom: 6 }}>
+          <div style={{ display: 'flex', gap: 3, minWidth: 700 }}>
             {heatmap.map((week, wi) => (
               <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                {week.map(day => (
-                  <div key={day.date} className={`heatmap-cell heatmap-${day.level}`} title={`${day.count} on ${day.date}`} />
+                {week.map((cell, di) => (
+                  <div
+                    key={di}
+                    className={`heatmap-cell heatmap-${cell.level}`}
+                    title={`${cell.date}: ${cell.count} problem${cell.count === 1 ? '' : 's'}`}
+                  />
                 ))}
               </div>
             ))}
@@ -154,47 +135,24 @@ export default function AnalyticsView({ problems, lcStats, lcCalendar }) {
         </div>
       </div>
 
-      {/* Charts row */}
-      <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
-        {/* Weekly bar chart */}
-        <div className="glass" style={{ borderRadius: 14, padding: '20px 22px' }}>
-          <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Weekly Activity</h2>
-          <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 20 }}>Last 10 weeks (CF + LC combined)</p>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 140 }}>
-            {stats.weekly.map((w, i) => (
-              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }} className="tooltip-wrapper">
-                <div className="tooltip">{w.count} problems · {w.label}</div>
+      {/* Weekly Velocity Bar Chart */}
+      <div className="glass" style={{ borderRadius: 6, padding: '18px 20px' }}>
+        <h2 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>Weekly Velocity (Past 10 Weeks)</h2>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, height: 160, paddingBottom: 24, borderBottom: '1px solid var(--border)' }}>
+          {stats.weekly.map((w, i) => {
+            const pct = Math.round((w.count / stats.maxWeekly) * 100);
+            return (
+              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--accent)', marginBottom: 4 }}>{w.count > 0 ? w.count : ''}</span>
                 <div style={{
-                  width: '100%', borderRadius: '5px 5px 0 0', minHeight: 4,
-                  background: i === 9 ? 'linear-gradient(180deg, var(--indigo-light), var(--indigo))' : 'rgba(99,102,241,0.2)',
-                  height: `${Math.max((w.count / stats.maxWeekly) * 100, 4)}%`,
-                  transition: 'height 0.8s cubic-bezier(0.4,0,0.2,1)'
+                  width: '100%', maxWidth: 28, height: `${Math.max(4, pct)}%`,
+                  background: 'var(--accent)', borderRadius: '3px 3px 0 0',
+                  transition: 'height 0.4s ease'
                 }} />
+                <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginTop: 8, whiteSpace: 'nowrap' }}>{w.label}</span>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Breakdown */}
-        <div className="glass" style={{ borderRadius: 14, padding: '20px 22px' }}>
-          <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>Problem Breakdown</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {[
-              { label: 'Easy',       count: stats.easy,   color: 'var(--emerald)' },
-              { label: 'Medium',     count: stats.medium, color: 'var(--yellow)'  },
-              { label: 'Hard',       count: stats.hard,   color: 'var(--red)'     },
-              { label: 'LeetCode',   count: stats.lc,     color: 'var(--orange)'  },
-              { label: 'Codeforces', count: stats.cf,     color: 'var(--blue)'    },
-            ].map(item => (
-              <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ width: 72, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>{item.label}</span>
-                <div className="progress-bar" style={{ flex: 1 }}>
-                  <div className="progress-fill" style={{ width: stats.total ? `${(item.count / stats.total) * 100}%` : '0%', background: item.color }} />
-                </div>
-                <span style={{ fontSize: 12, fontWeight: 700, color: item.color, minWidth: 24, textAlign: 'right' }}>{item.count}</span>
-              </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </div>
     </div>

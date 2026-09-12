@@ -71,26 +71,34 @@ router.get('/profile', auth, async (req, res) => {
       id: user._id,
       username: user.username,
       email: user.email,
-      handles:    user.handles    || { leetcode: '', codeforces: '' },
+      handles:    user.handles    || { leetcode: '', codeforces: '', lcSession: '' },
       lcStats:    user.lcStats    || {},
       lcCalendar: user.lcCalendar || {},
       cfRating:   user.cfRating   || 0,
       cfMaxRating:user.cfMaxRating|| 0,
-      cfRank:     user.cfRank     || ''
+      cfRank:     user.cfRank     || '',
+      lastSync:   user.lastSync   || {},
+      goals:      user.goals      || { weeklyTarget: 5, streakFreezes: 0 },
+      badges:     user.badges     || [],
+      preferences:user.preferences|| { theme: 'dark' }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Update user profile
+// Update user profile / settings
 router.put('/profile', auth, async (req, res) => {
   try {
-    const { handles } = req.body;
+    const { handles, goals, preferences } = req.body;
+    const update = {};
+    if (handles) update.handles = handles;
+    if (goals) update.goals = goals;
+    if (preferences) update.preferences = preferences;
     
     const user = await User.findByIdAndUpdate(
       req.user.id,
-      { handles },
+      { $set: update },
       { new: true }
     ).select('-password');
     
@@ -100,8 +108,39 @@ router.put('/profile', auth, async (req, res) => {
       id: user._id,
       username: user.username,
       email: user.email,
-      handles: user.handles || { leetcode: '', codeforces: '' }
+      handles: user.handles || { leetcode: '', codeforces: '', lcSession: '' },
+      goals: user.goals || { weeklyTarget: 5, streakFreezes: 0 },
+      preferences: user.preferences || { theme: 'dark' }
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Refresh token endpoint
+router.post('/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) return res.status(401).json({ msg: 'No refresh token provided' });
+
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET || 'secret');
+    const user = await User.findById(decoded.id);
+    if (!user || user.refreshToken !== refreshToken) {
+      return res.status(403).json({ msg: 'Invalid refresh token' });
+    }
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '1d' });
+    res.json({ token });
+  } catch (err) {
+    res.status(403).json({ error: 'Token expired or invalid' });
+  }
+});
+
+// Logout endpoint
+router.post('/logout', auth, async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(req.user.id, { refreshToken: '' });
+    res.json({ msg: 'Logged out successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -12,39 +12,61 @@ import AnalyticsView from './views/AnalyticsView';
 import NotesView     from './views/NotesView';
 import SettingsView  from './views/SettingsView';
 import CompareView   from './views/CompareView';
+import ReviewView    from './views/ReviewView';
 
-const API = 'https://algotrack-1.onrender.com';
+const API = import.meta.env.VITE_API || 'https://algotrack-1.onrender.com';
 
-function toLocalDateStr(date) {
-  const d = new Date(date);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function getUtcDayStr(dateInput) {
+  if (!dateInput) return null;
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return null;
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function calcStreak(problems, lcCalendar) {
   const daySet = new Set();
   (problems || []).forEach(p => {
-    daySet.add(toLocalDateStr(p.syncedAt || p.createdAt || 0));
+    if (p.archived) return;
+    const dayStr = getUtcDayStr(p.solvedAt || p.syncedAt || p.createdAt);
+    if (dayStr) daySet.add(dayStr);
   });
+
   Object.keys(lcCalendar || {}).forEach(ts => {
-    daySet.add(toLocalDateStr(parseInt(ts) * 1000));
+    const count = lcCalendar[ts];
+    if (count > 0) {
+      const num = Number(ts);
+      if (!isNaN(num) && num > 0) {
+        const dayStr = getUtcDayStr(num * 1000);
+        if (dayStr) daySet.add(dayStr);
+      }
+    }
   });
 
-  const sorted = [...daySet].sort((a, b) => b.localeCompare(a));
-  if (sorted.length === 0) return 0;
+  if (daySet.size === 0) return 0;
 
-  const todayStr = toLocalDateStr(new Date());
-  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = toLocalDateStr(yesterday);
+  const now = new Date();
+  const todayStr = getUtcDayStr(now);
+  const yesterdayStr = getUtcDayStr(now.getTime() - 86400000);
 
-  if (sorted[0] !== todayStr && sorted[0] !== yesterdayStr) return 0;
+  if (!daySet.has(todayStr) && !daySet.has(yesterdayStr)) return 0;
+
+  const startStr = daySet.has(todayStr) ? todayStr : yesterdayStr;
+  const parts = startStr.split('-').map(Number);
+  const curr = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
 
   let streak = 0;
-  let curr = new Date(sorted[0]);
-  for (let i = 0; i < sorted.length; i++) {
-    const check = toLocalDateStr(curr);
-    if (sorted[i] === check) {
+  while (true) {
+    const y = curr.getUTCFullYear();
+    const m = String(curr.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(curr.getUTCDate()).padStart(2, '0');
+    const checkStr = `${y}-${m}-${day}`;
+
+    if (daySet.has(checkStr)) {
       streak++;
-      curr.setDate(curr.getDate() - 1);
+      curr.setUTCDate(curr.getUTCDate() - 1);
     } else {
       break;
     }
@@ -58,6 +80,23 @@ export default function App() {
   const [user,  setUser]  = useState(() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } });
   const [authErr, setAuthErr] = useState('');
 
+  // ── Theme ─────────────────────────────────────────────────────────────────
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
+
+  // PWA Service Worker Registration
+  useEffect(() => {
+    if ('serviceWorker' in navigator && import.meta.env.PROD) {
+      navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW reg failed:', err));
+    }
+  }, []);
+
   // ── Nav / Search ──────────────────────────────────────────────────────────
   const [activeTab,    setActiveTab]    = useState('Home');
   const [searchQuery,  setSearchQuery]  = useState('');
@@ -69,7 +108,7 @@ export default function App() {
   const [lastSyncTime, setLastSyncTime] = useState(null);
   const [loading,      setLoading]      = useState(false);
 
-  // ── LeetCode real data ────────────────────────────────────────────────────
+  // ── LeetCode real data ────────────────────────────────────────────────    
   const [lcStats,    setLcStats]    = useState({});   // { easy, medium, hard, total, ranking }
   const [lcCalendar, setLcCalendar] = useState({});   // { "unixTs": count, ... }
 
@@ -98,15 +137,15 @@ export default function App() {
       const msLeft = endOfDay - now;
       const hrsLeft = msLeft / (1000 * 60 * 60);
 
-      const newNotifs = [];
-      if (!solvedToday) {
-        if (hrsLeft <= 1) {
-          newNotifs.push({ id: '1h', text: 'Only 1 hour left to keep your streak! Solve a problem now.', urgency: 'high' });
-        } else if (hrsLeft <= 3) {
-          newNotifs.push({ id: '3h', text: '3 hours remaining to solve a problem for today.', urgency: 'medium' });
-        }
+      if (!solvedToday && hrsLeft <= 6) {
+        setNotifications([{
+          id: 'streak-warning',
+          text: `🔥 You haven't solved a problem today! ${Math.floor(hrsLeft)}h left to keep your streak!`,
+          urgency: 'high'
+        }]);
+      } else {
+        setNotifications([]);
       }
-      setNotifications(newNotifs);
     };
 
     checkActivity();
@@ -114,37 +153,34 @@ export default function App() {
     return () => clearInterval(timer);
   }, [token, problems, lcCalendar]);
 
-  // ── Fetch all user data from backend ──────────────────────────────────────
-  const fetchData = async (tok = token) => {
-    if (!tok) return;
+  // ── Fetch user profile + problems ─────────────────────────────────────────
+  const fetchData = async () => {
+    if (!token) return;
     try {
       const profRes = await fetch(`${API}/api/auth/profile`, {
-        headers: { Authorization: `Bearer ${tok}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
-      if (!profRes.ok) return;
-      const prof = await profRes.json();
-
-      const handles = {
-        leetcodeHandle:   prof.handles?.leetcode   || '',
-        codeforcesHandle: prof.handles?.codeforces || ''
-      };
-      setUserSettings(handles);
-
-      // Real LC data from profile
-      if (prof.lcStats)    setLcStats(prof.lcStats);
-      if (prof.lcCalendar) setLcCalendar(prof.lcCalendar);
-      if (prof.cfRating)   setCfRating(prof.cfRating);
-      if (prof.cfMaxRating)setCfMaxRating(prof.cfMaxRating);
-      if (prof.cfRank)     setCfRank(prof.cfRank);
-
-      if (handles.leetcodeHandle || handles.codeforcesHandle) {
-        const probRes = await fetch(`${API}/api/sync/all`, {
-          headers: { Authorization: `Bearer ${tok}` }
+      if (profRes.ok) {
+        const profData = await profRes.json();
+        setUserSettings({
+          leetcodeHandle:   profData.handles?.leetcode   || '',
+          codeforcesHandle: profData.handles?.codeforces || '',
+          lcSession:        profData.handles?.lcSession  || ''
         });
-        if (probRes.ok) {
-          const data = await probRes.json();
-          setProblems(Array.isArray(data) ? data : []);
-        }
+        if (profData.lcStats)     setLcStats(profData.lcStats);
+        if (profData.lcCalendar)  setLcCalendar(profData.lcCalendar);
+        if (profData.cfRating)    setCfRating(profData.cfRating);
+        if (profData.cfMaxRating) setCfMaxRating(profData.cfMaxRating);
+        if (profData.cfRank)      setCfRank(profData.cfRank);
+        if (profData.preferences?.theme) setTheme(profData.preferences.theme);
+      }
+
+      const probRes = await fetch(`${API}/api/sync/all`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (probRes.ok) {
+        const probData = await probRes.json();
+        setProblems(Array.isArray(probData) ? probData : []);
       }
     } catch (err) {
       console.error('fetchData error:', err);
@@ -227,12 +263,11 @@ export default function App() {
           body: JSON.stringify({ handle: userSettings.leetcodeHandle })
         }).then(r => r.json()).then(d => {
           if (d.lcStats)    setLcStats(d.lcStats);
-          // Re-fetch profile to get updated calendar
           fetchData();
           return d;
         })
       );
-      const results = await Promise.all(reqs);
+      await Promise.all(reqs);
       await fetchData();
       setLastSyncTime(new Date());
       showPopup('Sync Complete!', `Data updated successfully.`, 'success');
@@ -266,7 +301,7 @@ export default function App() {
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const streak      = calcStreak(problems, lcCalendar);
-  const totalSolved = (lcStats?.total || problems.filter(p => p.platform === 'LeetCode').length)
+  const totalSolved = (lcStats?.total ?? problems.filter(p => p.platform === 'LeetCode').length)
                     + problems.filter(p => p.platform === 'Codeforces').length;
 
   // ── Not logged in ─────────────────────────────────────────────────────────
@@ -283,15 +318,17 @@ export default function App() {
   const renderView = () => {
     switch (activeTab) {
       case 'Home':
-        return <DashboardView problems={problems} streak={streak} lcStats={lcStats} cfRating={cfRating} cfRank={cfRank} token={token} />;
+        return <DashboardView problems={problems} streak={streak} lcStats={lcStats} cfRating={cfRating} cfRank={cfRank} token={token} onDataRefresh={fetchData} />;
       case 'Tracker':
-        return <TrackerView problems={problems} lastSyncTime={lastSyncTime} onSync={handleSync} searchQuery={searchQuery} />;
+        return <TrackerView problems={problems} lastSyncTime={lastSyncTime} onSync={handleSync} searchQuery={searchQuery} token={token} onDataRefresh={fetchData} />;
+      case 'Review':
+        return <ReviewView token={token} showPopup={showPopup} onDataRefresh={fetchData} />;
       case 'Analytics':
         return <AnalyticsView problems={problems} lcStats={lcStats} lcCalendar={lcCalendar} />;
       case 'Notes':
         return <NotesView problems={problems} onUpdateNote={handleUpdateNote} />;
       case 'Settings':
-        return <SettingsView userSettings={userSettings} setUserSettings={setUserSettings} token={token} showPopup={showPopup} />;
+        return <SettingsView userSettings={userSettings} setUserSettings={setUserSettings} token={token} showPopup={showPopup} theme={theme} onThemeToggle={toggleTheme} />;
       case 'Compare':
         return <CompareView token={token} />;
       default:
@@ -319,27 +356,15 @@ export default function App() {
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {activeTab !== 'Notes' && (
-          <Header
-            onSync={handleSync}
-            loading={loading}
-            onSearch={setSearchQuery}
-            searchQuery={searchQuery}
-            notifications={notifications}
-            onMenuToggle={() => setSidebarOpen(v => !v)}
-          />
-        )}
-        {activeTab === 'Notes' && (
-          <Header
-            onSync={handleSync}
-            loading={loading}
-            onSearch={setSearchQuery}
-            searchQuery={searchQuery}
-            notifications={notifications}
-            onMenuToggle={() => setSidebarOpen(v => !v)}
-            minimal
-          />
-        )}
+        <Header
+          onSync={handleSync}
+          loading={loading}
+          onSearch={setSearchQuery}
+          searchQuery={searchQuery}
+          notifications={notifications}
+          onMenuToggle={() => setSidebarOpen(v => !v)}
+          minimal={activeTab === 'Notes'}
+        />
         <main style={{ flex: 1, overflowY: 'auto' }}>
           {renderView()}
         </main>

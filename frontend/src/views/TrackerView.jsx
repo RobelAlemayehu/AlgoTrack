@@ -1,19 +1,25 @@
 import React, { useState, useMemo } from 'react';
-import { RefreshCw, Code, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { RefreshCw, Code, Filter, ChevronLeft, ChevronRight, Zap, Repeat } from 'lucide-react';
 
-function getDiffClass(d) {
-  if (!d) return 'badge badge-unknown';
-  const l = d.toLowerCase();
-  if (l === 'easy')   return 'badge badge-easy';
-  if (l === 'medium') return 'badge badge-medium';
-  if (l === 'hard')   return 'badge badge-hard';
-  const r = parseInt(d);
-  if (!isNaN(r)) {
-    if (r < 1200) return 'badge badge-easy';
-    if (r < 1900) return 'badge badge-medium';
-    return 'badge badge-hard';
+const API = import.meta.env.VITE_API || 'https://algotrack-1.onrender.com';
+
+function getRatingClass(d) {
+  if (!d) return 'rating-gray';
+  const num = parseInt(d);
+  if (!isNaN(num)) {
+    if (num < 1200) return 'rating-green';
+    if (num < 1400) return 'rating-green';
+    if (num < 1600) return 'rating-cyan';
+    if (num < 1900) return 'rating-blue';
+    if (num < 2100) return 'rating-violet';
+    if (num < 2400) return 'rating-orange';
+    return 'rating-red';
   }
-  return 'badge badge-unknown';
+  const lower = String(d).toLowerCase();
+  if (lower === 'easy') return 'badge-easy';
+  if (lower === 'medium') return 'badge-medium';
+  if (lower === 'hard') return 'badge-hard';
+  return 'badge-unknown';
 }
 
 function timeAgo(dateStr) {
@@ -29,20 +35,11 @@ function timeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 15;
 const PLATFORMS    = ['All', 'LeetCode', 'Codeforces'];
 const DIFFICULTIES = ['All', 'Easy', 'Medium', 'Hard'];
 
-const chipStyle = (active) => ({
-  padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-  cursor: 'pointer', border: 'none',
-  background: active ? 'var(--indigo-dim)' : 'rgba(255,255,255,0.04)',
-  color:      active ? 'var(--indigo-light)' : 'var(--text-muted)',
-  outline: active ? '1px solid rgba(99,102,241,0.3)' : '1px solid var(--border)',
-  transition: 'all 0.15s'
-});
-
-export default function TrackerView({ problems, lastSyncTime, onSync, searchQuery }) {
+export default function TrackerView({ problems, lastSyncTime, onSync, searchQuery, token, onDataRefresh }) {
   const [platform,   setPlatform]   = useState('All');
   const [difficulty, setDifficulty] = useState('All');
   const [tagFilter,  setTagFilter]  = useState('');
@@ -99,128 +96,133 @@ export default function TrackerView({ problems, lastSyncTime, onSync, searchQuer
     setPage(1);
   };
 
-  const lastSyncDisplay = () => {
-    if (!lastSyncTime) return 'Never';
-    const diff = Date.now() - new Date(lastSyncTime).getTime();
-    const m = Math.floor(diff / 60000);
-    if (m < 1) return 'Just now';
-    if (m < 60) return `${m}m ago`;
-    return `${Math.floor(m / 60)}h ago`;
+  const handleToggleReview = async (problem) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API}/api/review/${problem._id}/toggle`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ enabled: !problem.review?.enabled })
+      });
+      if (res.ok) {
+        onDataRefresh?.();
+      }
+    } catch (err) {
+      console.error('Failed to toggle review:', err);
+    }
   };
 
+  const chipStyle = (active) => ({
+    padding: '4px 10px', borderRadius: 4, fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: 600,
+    cursor: 'pointer', border: '1px solid var(--border)',
+    background: active ? 'var(--accent)' : 'var(--bg-base)',
+    color:      active ? '#0D1117' : 'var(--text-secondary)',
+    transition: 'all 0.15s'
+  });
+
   return (
-    <div className="animate-fade-in view-pad" style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div className="animate-fade-in view-pad" style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {/* Header rail */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: 14 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>DSA Tracker</h1>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--emerald)', display: 'inline-block' }} />
-            Last synced {lastSyncDisplay()} · {safe.length} problems
+          <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>DSA Problem Ledger</h1>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>
+            Showing {filtered.length} of {safe.length} synced problems
           </p>
         </div>
-        <button className="btn-primary" onClick={onSync} style={{ fontSize: 13 }}>
-          <RefreshCw size={14} /> Sync Data
+        <button className="btn-primary" onClick={onSync} style={{ fontSize: 12 }}>
+          <RefreshCw size={13} /> Sync Data
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="tracker-filters" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <Filter size={13} color="var(--text-muted)" />
-        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Platform</span>
+      {/* Filter Bar */}
+      <div className="tracker-filters" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', background: 'var(--bg-surface)', padding: '10px 14px', borderRadius: 6, border: '1px solid var(--border)' }}>
+        <Filter size={13} style={{ color: 'var(--text-muted)' }} />
+        <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>PLATFORM:</span>
         {PLATFORMS.map(p => (
           <button key={p} onClick={() => { setPlatform(p); setPage(1); }} style={chipStyle(platform === p)}>{p}</button>
         ))}
 
-        <div style={{ width: 1, height: 20, background: 'var(--border)' }} />
+        <div style={{ width: 1, height: 16, background: 'var(--border)', margin: '0 4px' }} />
 
-        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Difficulty</span>
+        <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>DIFFICULTY:</span>
         {DIFFICULTIES.map(d => (
           <button key={d} onClick={() => { setDifficulty(d); setPage(1); }} style={chipStyle(difficulty === d)}>{d}</button>
         ))}
 
-        <div style={{ width: 1, height: 20, background: 'var(--border)' }} />
+        <div style={{ width: 1, height: 16, background: 'var(--border)', margin: '0 4px' }} />
 
-        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Tag</span>
+        <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>TAG:</span>
         <input
           value={tagFilter}
           onChange={e => { setTagFilter(e.target.value); setPage(1); }}
-          placeholder="e.g. dp, graphs"
-          style={{
-            background: tagFilter ? 'var(--indigo-dim)' : 'rgba(255,255,255,0.04)',
-            border: tagFilter ? '1px solid rgba(99,102,241,0.3)' : '1px solid var(--border)',
-            borderRadius: 8, padding: '5px 10px', fontSize: 12,
-            color: 'var(--text-primary)', outline: 'none', width: 120, fontFamily: 'Inter, sans-serif'
-          }}
+          placeholder="e.g. dp"
+          className="input-field"
+          style={{ padding: '3px 8px', fontSize: 11, fontFamily: 'var(--font-mono)', width: 100, height: 26 }}
         />
         {tagFilter && (
-          <button onClick={() => { setTagFilter(''); setPage(1); }} style={{ ...chipStyle(false), padding: '5px 8px' }}>✕</button>
+          <button onClick={() => { setTagFilter(''); setPage(1); }} style={{ ...chipStyle(false), padding: '3px 6px' }}>✕</button>
         )}
       </div>
 
-      {/* Table */}
-      <div className="glass" style={{ borderRadius: 14, overflow: 'hidden' }}>
+      {/* Problem Ledger Table */}
+      <div className="glass" style={{ borderRadius: 6, overflow: 'hidden' }}>
         <table className="data-table">
           <thead>
             <tr>
-              <th onClick={() => toggleSort('title')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => toggleSort('title')} style={{ cursor: 'pointer', userSelect: 'none', width: '40%' }}>
                 Problem {sort.key === 'title' ? (sort.dir === 'asc' ? '↑' : '↓') : ''}
               </th>
               <th>Platform</th>
-              <th>Difficulty</th>
+              <th>Rating / Difficulty</th>
               <th className="col-tags">Tags</th>
               <th onClick={() => toggleSort('syncedAt')} style={{ cursor: 'pointer', userSelect: 'none' }}>
                 Solved {sort.key === 'syncedAt' ? (sort.dir === 'asc' ? '↑' : '↓') : ''}
               </th>
+              <th style={{ textAlign: 'center' }}>Spaced Review</th>
             </tr>
           </thead>
           <tbody>
             {pageItems.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 13 }}>
                   {safe.length === 0
-                    ? 'No problems synced yet. Go to Settings → add your handles → Save & Sync!'
-                    : 'No results match your filters.'}
+                    ? 'No problems synced yet. Click Sync Now in the top right to import your solved problems!'
+                    : 'No problem records match your selected filters.'}
                 </td>
               </tr>
             ) : pageItems.map((p, i) => (
               <tr key={p._id || i}>
                 <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{
-                      width: 28, height: 28, borderRadius: 7, flexShrink: 0,
-                      background: p.platform === 'LeetCode' ? 'var(--orange-dim)' : 'var(--blue-dim)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: p.platform === 'LeetCode' ? 'var(--orange)' : 'var(--blue)'
-                    }}>
-                      <Code size={13} />
-                    </div>
-                    <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 13 }}>{p.title}</span>
-                  </div>
+                  <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 13 }}>{p.title}</div>
                 </td>
                 <td>
-                  <span className={p.platform === 'LeetCode' ? 'badge badge-lc' : 'badge badge-cf'}>
+                  <span className={`badge ${p.platform === 'LeetCode' ? 'badge-lc' : 'badge-cf'}`}>
                     {p.platform === 'LeetCode' ? 'LC' : 'CF'}
                   </span>
                 </td>
                 <td>
-                  <span className={getDiffClass(p.difficulty)}>{p.difficulty || '—'}</span>
+                  <span className={getRatingClass(p.difficulty)} style={{ fontSize: 13 }}>
+                    {p.difficulty || '—'}
+                  </span>
                 </td>
                 <td className="col-tags">
-                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 200 }}>
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                     {(p.tags || []).length === 0 ? (
-                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>—</span>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>—</span>
                     ) : (p.tags || []).slice(0, 3).map(t => (
                       <span
                         key={t}
                         onClick={() => { setTagFilter(tagFilter === t ? '' : t); setPage(1); }}
                         style={{
-                          fontSize: 10, padding: '2px 6px', borderRadius: 4,
-                          cursor: 'pointer', textTransform: 'capitalize',
-                          color:      tagFilter === t ? 'var(--indigo-light)' : 'var(--text-muted)',
-                          background: tagFilter === t ? 'var(--indigo-dim)' : 'rgba(255,255,255,0.04)',
-                          border: '1px solid ' + (tagFilter === t ? 'rgba(99,102,241,0.3)' : 'transparent'),
-                          transition: 'all 0.15s'
+                          fontSize: 10, padding: '1px 5px', borderRadius: 3,
+                          cursor: 'pointer', fontFamily: 'var(--font-mono)',
+                          color:      tagFilter === t ? 'var(--accent)' : 'var(--text-muted)',
+                          background: tagFilter === t ? 'var(--accent-dim)' : 'var(--bg-muted)',
+                          border: '1px solid ' + (tagFilter === t ? 'rgba(240,136,62,0.3)' : 'var(--border)')
                         }}
                       >
                         {t}
@@ -228,8 +230,23 @@ export default function TrackerView({ problems, lastSyncTime, onSync, searchQuer
                     ))}
                   </div>
                 </td>
-                <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                <td style={{ color: 'var(--text-muted)', fontSize: 11, fontFamily: 'var(--font-mono)' }}>
                   {timeAgo(p.syncedAt || p.createdAt)}
+                </td>
+                <td style={{ textAlign: 'center' }}>
+                  <button
+                    onClick={() => handleToggleReview(p)}
+                    title={p.review?.enabled ? 'Disable spaced review' : 'Enable spaced review queue'}
+                    style={{
+                      background: p.review?.enabled ? 'var(--accent-dim)' : 'var(--bg-base)',
+                      border: `1px solid ${p.review?.enabled ? 'rgba(240,136,62,0.4)' : 'var(--border)'}`,
+                      color: p.review?.enabled ? 'var(--accent)' : 'var(--text-muted)',
+                      borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer',
+                      fontFamily: 'var(--font-mono)', display: 'inline-flex', alignItems: 'center', gap: 4
+                    }}
+                  >
+                    <Repeat size={11} /> {p.review?.enabled ? 'Active' : '+ Add'}
+                  </button>
                 </td>
               </tr>
             ))}
@@ -238,27 +255,16 @@ export default function TrackerView({ problems, lastSyncTime, onSync, searchQuer
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
-            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              Showing {(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, filtered.length)} of {filtered.length}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderTop: '1px solid var(--border)' }}>
+            <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+              Page {page} of {totalPages} ({filtered.length} total)
             </span>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button className="btn-ghost" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ padding: '6px 10px', fontSize: 12 }}>
-                <ChevronLeft size={14} /> Prev
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button className="btn-ghost" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ padding: '4px 8px', fontSize: 11 }}>
+                <ChevronLeft size={13} /> Prev
               </button>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                const pg = Math.max(1, Math.min(page - 2, totalPages - 4)) + i;
-                return (
-                  <button key={pg} onClick={() => setPage(pg)} style={{
-                    width: 32, height: 32, borderRadius: 8, fontSize: 12, fontWeight: 600,
-                    cursor: 'pointer', border: 'none',
-                    background: page === pg ? 'var(--indigo)' : 'rgba(255,255,255,0.04)',
-                    color:      page === pg ? 'white'        : 'var(--text-muted)'
-                  }}>{pg}</button>
-                );
-              })}
-              <button className="btn-ghost" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ padding: '6px 10px', fontSize: 12 }}>
-                Next <ChevronRight size={14} />
+              <button className="btn-ghost" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ padding: '4px 8px', fontSize: 11 }}>
+                Next <ChevronRight size={13} />
               </button>
             </div>
           </div>

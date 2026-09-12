@@ -1,28 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, Flame, AlertCircle, Code, ExternalLink, Lightbulb, Tag, Star } from 'lucide-react';
+import { CheckCircle2, Flame, AlertCircle, Code, ExternalLink, Lightbulb, Tag, Calendar, Trophy, Shield, Clock, ChevronRight, Target, Zap, Award, ShieldAlert, Crown, Swords } from 'lucide-react';
 
-function StatCard({ title, value, sub, subColor, icon, accent }) {
-  return (
-    <div className="glass glass-hover" style={{ borderRadius: 14, padding: '20px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-      <div>
-        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 10 }}>{title}</p>
-        <p className="stat-value" style={{ color: 'var(--text-primary)', marginBottom: 6 }}>{value}</p>
-        <p style={{ fontSize: 11, fontWeight: 600, color: subColor || 'var(--text-muted)' }}>{sub}</p>
-      </div>
-      <div style={{ padding: 10, borderRadius: 12, background: accent + '1a', color: accent, display: 'flex', flexShrink: 0 }}>{icon}</div>
-    </div>
-  );
-}
+const BADGE_ICONS = {
+  'first-ac': Target,
+  '50-solved': Zap,
+  '100-solved': Award,
+  '200-solved': Flame,
+  'expert-coder': ShieldAlert,
+  'master-coder': Crown,
+  'streak-7': Calendar,
+  'streak-30': Trophy,
+  'polyglot': Swords,
+  Target, Zap, Award, Flame, ShieldAlert, Crown, Calendar, Trophy, Swords
+};
 
-function getDiffBadgeClass(d) {
-  if (!d) return 'badge badge-unknown';
-  const l = d.toLowerCase();
-  if (l === 'easy') return 'badge badge-easy';
-  if (l === 'medium') return 'badge badge-medium';
-  if (l === 'hard') return 'badge badge-hard';
-  const r = parseInt(d);
-  if (!isNaN(r)) { if (r < 1200) return 'badge badge-easy'; if (r < 1900) return 'badge badge-medium'; return 'badge badge-hard'; }
-  return 'badge badge-unknown';
+const renderBadgeIcon = (b) => {
+  const IconComp = BADGE_ICONS[b.iconKey] || BADGE_ICONS[b.id] || Trophy;
+  return <IconComp size={14} style={{ color: 'var(--accent)' }} />;
+};
+
+const API = import.meta.env.VITE_API || 'https://algotrack-1.onrender.com';
+
+function formatCountdown(targetTs) {
+  const diff = Math.max(0, targetTs - Math.floor(Date.now() / 1000));
+  const days = Math.floor(diff / 86400);
+  const hrs = Math.floor((diff % 86400) / 3600);
+  const mins = Math.floor((diff % 3600) / 60);
+  if (days > 0) return `${days}d ${hrs}h`;
+  if (hrs > 0) return `${hrs}h ${mins}m`;
+  return `${mins}m`;
 }
 
 function timeAgo(dateStr) {
@@ -35,216 +41,287 @@ function timeAgo(dateStr) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-export default function DashboardView({ problems, streak, lcStats, cfRating, cfRank, token }) {
+function getRatingClass(diff) {
+  if (!diff) return 'rating-gray';
+  const num = parseInt(diff);
+  if (!isNaN(num)) {
+    if (num < 1200) return 'rating-green';
+    if (num < 1400) return 'rating-green';
+    if (num < 1600) return 'rating-cyan';
+    if (num < 1900) return 'rating-blue';
+    if (num < 2100) return 'rating-violet';
+    if (num < 2400) return 'rating-orange';
+    return 'rating-red';
+  }
+  const lower = String(diff).toLowerCase();
+  if (lower === 'easy') return 'badge-easy';
+  if (lower === 'medium') return 'badge-medium';
+  if (lower === 'hard') return 'badge-hard';
+  return 'badge-unknown';
+}
+
+export default function DashboardView({ problems, streak, lcStats, cfRating, cfRank, token, onDataRefresh }) {
   const [recommendations, setRecommendations] = useState(null);
   const [recLoading, setRecLoading] = useState(false);
+  const [contests, setContests] = useState([]);
+  const [badges, setBadges] = useState([]);
+  const [dueReviewCount, setDueReviewCount] = useState(0);
 
   const safe = Array.isArray(problems) ? problems : [];
   const sorted = [...safe].sort((a, b) => new Date(b.syncedAt || b.createdAt) - new Date(a.syncedAt || a.createdAt));
-  
+
   const lcCount = lcStats?.total || safe.filter(p => p.platform === 'LeetCode').length;
   const cfCount = safe.filter(p => p.platform === 'Codeforces').length;
-  const reviewNeeded = safe.filter(p => p.status === 'Review').length;
+  const totalSolved = cfCount + lcCount;
 
   const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-  const thisWeek = safe.filter(p => new Date(p.syncedAt || p.createdAt) >= weekAgo).length;
+  const thisWeekCount = safe.filter(p => new Date(p.syncedAt || p.createdAt) >= weekAgo).length;
 
   const recent = sorted.slice(0, 8);
+
+  // Fetch Contests, Badges, & Due Reviews
+  useEffect(() => {
+    if (!token) return;
+
+    fetch(`${API}/api/sync/contests`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setContests(Array.isArray(d) ? d : []))
+      .catch(() => {});
+
+    fetch(`${API}/api/sync/badges`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setBadges(Array.isArray(d) ? d : []))
+      .catch(() => {});
+
+    fetch(`${API}/api/review/due`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setDueReviewCount(d.dueCount || 0))
+      .catch(() => {});
+  }, [token]);
 
   // Load recommendations
   useEffect(() => {
     if (!token || safe.length === 0) return;
     setRecLoading(true);
-    fetch('https://algotrack-1.onrender.com/api/sync/recommend', { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API}/api/sync/recommend`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => setRecommendations(d))
       .catch(() => {})
       .finally(() => setRecLoading(false));
   }, [token, safe.length]);
 
-  const totalSolved = cfCount + lcCount;
+  const weeklyTarget = 5;
+  const weeklyPct = Math.min(100, Math.round((thisWeekCount / weeklyTarget) * 100));
 
   return (
-    <div className="animate-fade-in view-pad" style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 22 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+    <div className="animate-fade-in view-pad" style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Top Header Rail */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Dashboard</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>Your competitive programming at a glance</p>
+          <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+            Dashboard
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
+            Competitive Programming Tracker & Review Ledger
+          </div>
         </div>
-        {/* CF Rating badge */}
+
+        {/* CF Rating Badge if user has one */}
         {cfRating > 0 && (
-          <div style={{ padding: '8px 14px', borderRadius: 10, background: 'var(--blue-dim)', border: '1px solid rgba(59,130,246,0.2)', textAlign: 'right' }}>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>CF Rating</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--blue)' }}>{cfRating}</div>
-            {cfRank && <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'capitalize' }}>{cfRank}</div>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-surface)', padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)' }}>
+            <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>CF RATING</span>
+            <span className={getRatingClass(cfRating.toString())} style={{ fontSize: 16 }}>{cfRating}</span>
+            {cfRank && <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'capitalize' }}>({cfRank})</span>}
           </div>
         )}
       </div>
 
-      {/* Stat cards */}
-      <div className="grid-stats-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-        <StatCard title="Total Solved" value={totalSolved} sub={`+${thisWeek} this week`} subColor="var(--emerald)" accent="#10B981" icon={<CheckCircle2 size={20} />} />
-        <StatCard title="Current Streak" value={`${streak}d`} sub={streak > 0 ? 'Keep it up!' : 'Start today!'} subColor="var(--orange)" accent="#F97316" icon={<Flame size={20} />} />
-        <StatCard title="Review Needed" value={reviewNeeded} sub={reviewNeeded === 0 ? 'All caught up!' : 'Problems to revisit'} subColor="var(--yellow)" accent="#F59E0B" icon={<AlertCircle size={20} />} />
-      </div>
-
-      {/* Platform breakdown row */}
-      <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
-        {[
-          { label: 'LeetCode', count: lcCount, easy: lcStats?.easy, medium: lcStats?.medium, hard: lcStats?.hard, color: 'var(--orange)', bg: 'var(--orange-dim)' },
-          { label: 'Codeforces', count: cfCount, rating: cfRating, rank: cfRank, color: 'var(--blue)', bg: 'var(--blue-dim)' },
-        ].map(p => (
-          <div key={p.label} className="glass" style={{ borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: p.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Code size={18} color={p.color} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{p.label}</span>
-                <span style={{ fontSize: 18, fontWeight: 800, color: p.color }}>{p.count}</span>
-              </div>
-              {p.easy !== undefined ? (
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
-                  <span style={{ color: 'var(--emerald)' }}>{p.easy}E</span> · <span style={{ color: 'var(--yellow)' }}>{p.medium}M</span> · <span style={{ color: 'var(--red)' }}>{p.hard}H</span>
-                </div>
-              ) : (
-                p.rating > 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, textTransform: 'capitalize' }}>Rating: {p.rating} · {p.rank}</div>
-              )}
+      {/* Horizontal Stat Rail — Dense, clean 1-strip design */}
+      <div className="glass" style={{ padding: '14px 18px', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>TOTAL SOLVED</div>
+            <div className="stat-value" style={{ color: 'var(--text-primary)' }}>{totalSolved}</div>
+          </div>
+          <div style={{ height: 28, width: 1, background: 'var(--border)' }} />
+          <div>
+            <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>LEETCODE</div>
+            <div className="stat-value" style={{ color: 'var(--accent)' }}>{lcCount}</div>
+          </div>
+          <div style={{ height: 28, width: 1, background: 'var(--border)' }} />
+          <div>
+            <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>CODEFORCES</div>
+            <div className="stat-value" style={{ color: 'var(--cf-cyan)' }}>{cfCount}</div>
+          </div>
+          <div style={{ height: 28, width: 1, background: 'var(--border)' }} />
+          <div>
+            <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>STREAK</div>
+            <div className="stat-value" style={{ color: streak > 0 ? 'var(--cf-green)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Flame size={18} style={{ color: streak > 0 ? 'var(--accent)' : 'var(--text-muted)' }} />
+              {streak}d
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Main content: recent + sidebar */}
-      <div className="grid-main" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 18 }}>
-        {/* Recent Activity */}
-        <div className="glass" style={{ borderRadius: 14, padding: '20px 22px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Recent Activity</h2>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{safe.length} total synced</span>
-          </div>
-          {recent.length === 0 ? (
-            <div style={{ padding: '28px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-              No problems yet — go to <strong>Settings</strong> and sync your accounts!
-            </div>
-          ) : recent.map((p, i) => (
-            <div key={p._id || i} style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '9px 12px', borderRadius: 10, marginBottom: 6,
-              background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)',
-              transition: 'border-color 0.15s'
-            }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{
-                  width: 28, height: 28, borderRadius: 7, flexShrink: 0,
-                  background: p.platform === 'LeetCode' ? 'var(--orange-dim)' : 'var(--blue-dim)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: p.platform === 'LeetCode' ? 'var(--orange)' : 'var(--blue)'
-                }}>
-                  <Code size={13} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{p.title}</div>
-                  {(p.tags || []).length > 0 && (
-                    <div style={{ display: 'flex', gap: 4, marginTop: 2, flexWrap: 'wrap' }}>
-                      {(p.tags || []).slice(0, 2).map(t => (
-                        <span key={t} style={{ fontSize: 9, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)', padding: '1px 5px', borderRadius: 4, textTransform: 'capitalize' }}>{t}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className={getDiffBadgeClass(p.difficulty)}>{p.difficulty || '—'}</span>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 48, textAlign: 'right' }}>{timeAgo(p.syncedAt || p.createdAt)}</span>
-              </div>
-            </div>
-          ))}
         </div>
 
-        {/* Difficulty split */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div className="glass" style={{ borderRadius: 14, padding: '18px 20px' }}>
-            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 14 }}>Difficulty Split</h2>
-            {[
-              { label: 'Easy', count: lcStats?.easy ?? safe.filter(p => p.difficulty?.toLowerCase() === 'easy').length, color: 'var(--emerald)' },
-              { label: 'Medium', count: lcStats?.medium ?? safe.filter(p => p.difficulty?.toLowerCase() === 'medium').length, color: 'var(--yellow)' },
-              { label: 'Hard', count: lcStats?.hard ?? safe.filter(p => p.difficulty?.toLowerCase() === 'hard').length, color: 'var(--red)' },
-              { label: 'CF Rated', count: safe.filter(p => p.platform === 'Codeforces' && !isNaN(parseInt(p.difficulty))).length, color: 'var(--blue)' },
-            ].map(d => {
-              const pct = totalSolved ? Math.round((d.count / totalSolved) * 100) : 0;
-              return (
-                <div key={d.label} style={{ marginBottom: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>{d.label}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: d.color }}>{d.count}</span>
-                  </div>
-                  <div className="progress-bar">
-                    <div className="progress-fill" style={{ width: `${pct}%`, background: d.color }} />
-                  </div>
-                </div>
-              );
-            })}
+        {/* Review Queue alert */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>REVIEWS DUE</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: dueReviewCount > 0 ? 'var(--accent)' : 'var(--cf-green)', fontFamily: 'var(--font-mono)' }}>
+              {dueReviewCount > 0 ? `${dueReviewCount} problem${dueReviewCount > 1 ? 's' : ''}` : 'All caught up!'}
+            </div>
           </div>
+        </div>
+      </div>
+
+      {/* Grid Layout: Main Activity + Contests/Goals */}
+      <div className="grid-main" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 18 }}>
+        
+        {/* Left Column: Recent Activity Ledger */}
+        <div className="glass" style={{ borderRadius: 8, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Recent Solved Activity</h2>
+            <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{safe.length} total recorded</span>
+          </div>
+
+          {recent.length === 0 ? (
+            <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+              No problems synced yet. Click <strong>Sync Now</strong> in the top header to import your submissions.
+            </div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '45%' }}>Problem</th>
+                  <th>Platform</th>
+                  <th>Difficulty / Rating</th>
+                  <th style={{ textAlign: 'right' }}>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recent.map((p, i) => (
+                  <tr key={p._id || i}>
+                    <td>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.title}</div>
+                      {p.tags && p.tags.length > 0 && (
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
+                          {p.tags.slice(0, 2).join(' · ')}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <span className={`badge ${p.platform === 'LeetCode' ? 'badge-lc' : 'badge-cf'}`}>
+                        {p.platform}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={getRatingClass(p.difficulty)} style={{ fontSize: 12 }}>
+                        {p.difficulty || 'Unrated'}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
+                      {timeAgo(p.syncedAt || p.createdAt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Right Column: Weekly Goal & Upcoming Contests */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          
+          {/* Weekly Goal Progress */}
+          <div className="glass" style={{ borderRadius: 8, padding: '16px 18px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Weekly Target</span>
+              <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>{thisWeekCount} / {weeklyTarget}</span>
+            </div>
+            <div className="progress-bar" style={{ marginBottom: 8 }}>
+              <div className="progress-fill" style={{ width: `${weeklyPct}%`, background: 'var(--accent)' }} />
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}>
+              <span>{weeklyPct}% target reached</span>
+              <span>Reset in {7 - (new Date().getDay() || 7)}d</span>
+            </div>
+          </div>
+
+          {/* Upcoming Contests */}
+          <div className="glass" style={{ borderRadius: 8, padding: '16px 18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+              <Calendar size={14} style={{ color: 'var(--cf-cyan)' }} />
+              <h2 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Upcoming Contests</h2>
+            </div>
+
+            {contests.length === 0 ? (
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '8px 0' }}>
+                No upcoming Codeforces contests found.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {contests.slice(0, 4).map(c => (
+                  <div key={c.id} style={{ borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {c.name}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 11, fontFamily: 'var(--font-mono)' }}>
+                      <span style={{ color: 'var(--cf-cyan)' }}>Starts in {formatCountdown(c.startTimeSeconds)}</span>
+                      <span style={{ color: 'var(--text-muted)' }}>{Math.round(c.durationSeconds / 3600)}h duration</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Achievements / Badges Strip */}
+          {badges.length > 0 && (
+            <div className="glass" style={{ borderRadius: 8, padding: '16px 18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                <Trophy size={14} style={{ color: 'var(--accent)' }} />
+                <h2 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Earned Badges ({badges.length})</h2>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {badges.map(b => (
+                  <div key={b.id} title={`${b.name}: ${b.description}`} style={{ background: 'var(--bg-muted)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {renderBadgeIcon(b)}
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)' }}>{b.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
 
       {/* Recommendations */}
       {(recommendations?.cfRecommendations?.length > 0 || recommendations?.lcRecommendations?.length > 0) && (
-        <div className="glass" style={{ borderRadius: 14, padding: '20px 22px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <Lightbulb size={16} color="var(--yellow)" />
-            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Recommended Problems</h2>
-            {recommendations.weakTags?.length > 0 && (
-              <div style={{ display: 'flex', gap: 6, marginLeft: 8 }}>
-                {recommendations.weakTags.slice(0, 3).map(t => (
-                  <span key={t} className="badge badge-cf" style={{ fontSize: 10 }}><Tag size={8} /> {t}</span>
-                ))}
-              </div>
-            )}
+        <div className="glass" style={{ borderRadius: 8, padding: '18px 20px', marginTop: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+            <Lightbulb size={15} style={{ color: 'var(--lc-yellow)' }} />
+            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Recommended Practice Problems</h2>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 }}>
             {[...(recommendations.cfRecommendations || []).slice(0, 4), ...(recommendations.lcRecommendations || []).slice(0, 4)].map((rec, i) => (
               <a key={i} href={rec.url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
                 <div style={{
-                  padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border)',
-                  background: 'rgba(255,255,255,0.02)', cursor: 'pointer', transition: 'all 0.15s'
+                  padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)',
+                  background: 'var(--bg-base)', cursor: 'pointer', transition: 'border-color 0.15s'
                 }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'; e.currentTarget.style.background = 'rgba(99,102,241,0.05)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--border-hover)'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
                 >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{rec.title}</div>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        <span className={rec.platform === 'LeetCode' ? 'badge badge-lc' : 'badge badge-cf'} style={{ fontSize: 9 }}>{rec.platform}</span>
-                        {rec.rating && <span className="badge badge-medium" style={{ fontSize: 9 }}>{rec.rating}</span>}
-                        {rec.difficulty && <span className={`badge badge-${rec.difficulty?.toLowerCase()}`} style={{ fontSize: 9 }}>{rec.difficulty}</span>}
-                      </div>
-                      {(rec.tags || []).length > 0 && (
-                        <div style={{ marginTop: 4, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                          {rec.tags.slice(0, 3).map(t => (
-                            <span key={t} style={{ fontSize: 9, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)', padding: '1px 5px', borderRadius: 3, textTransform: 'capitalize' }}>{t}</span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <ExternalLink size={12} color="var(--text-muted)" style={{ flexShrink: 0, marginTop: 2 }} />
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>{rec.title}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                    <span className={`badge ${rec.platform === 'LeetCode' ? 'badge-lc' : 'badge-cf'}`}>{rec.platform}</span>
+                    <span className={getRatingClass(rec.rating || rec.difficulty)} style={{ fontSize: 11 }}>{rec.rating || rec.difficulty}</span>
                   </div>
                 </div>
               </a>
             ))}
           </div>
-        </div>
-      )}
-      {recLoading && (
-        <div style={{ padding: '12px 16px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div className="animate-spin" style={{ width: 14, height: 14, border: '2px solid var(--border)', borderTop: '2px solid var(--indigo)', borderRadius: '50%' }} />
-          Loading personalized recommendations…
         </div>
       )}
     </div>

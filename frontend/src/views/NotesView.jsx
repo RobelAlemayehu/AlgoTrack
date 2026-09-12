@@ -3,13 +3,23 @@ import { Search, BookOpen, Code, Edit3, Save, X, Clock, ChevronRight, FileText, 
 
 const TABS = ['Explanation', 'Code', 'Complexity'];
 
-function getDiffClass(d) {
-  if (!d) return 'badge badge-unknown';
-  const l = d.toLowerCase();
-  if (l === 'easy') return 'badge badge-easy';
-  if (l === 'medium') return 'badge badge-medium';
-  if (l === 'hard') return 'badge badge-hard';
-  return 'badge badge-cf';
+function getRatingClass(d) {
+  if (!d) return 'rating-gray';
+  const num = parseInt(d);
+  if (!isNaN(num)) {
+    if (num < 1200) return 'rating-green';
+    if (num < 1400) return 'rating-green';
+    if (num < 1600) return 'rating-cyan';
+    if (num < 1900) return 'rating-blue';
+    if (num < 2100) return 'rating-violet';
+    if (num < 2400) return 'rating-orange';
+    return 'rating-red';
+  }
+  const lower = String(d).toLowerCase();
+  if (lower === 'easy') return 'badge-easy';
+  if (lower === 'medium') return 'badge-medium';
+  if (lower === 'hard') return 'badge-hard';
+  return 'badge-unknown';
 }
 
 export default function NotesView({ problems, onUpdateNote }) {
@@ -31,7 +41,7 @@ export default function NotesView({ problems, onUpdateNote }) {
 
   useEffect(() => {
     if (!selectedId && safe.length > 0) setSelectedId(safe[0]._id);
-  }, [safe]);
+  }, [safe.length]);
 
   useEffect(() => {
     if (selected) {
@@ -58,49 +68,47 @@ export default function NotesView({ problems, onUpdateNote }) {
   };
 
   return (
-    <div className="notes-layout" style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
+    <div className="notes-layout" style={{ display: 'flex', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
       {/* Problem list sidebar */}
       <div className="notes-sidebar" style={{
         width: 260, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column',
-        background: 'var(--bg-card)', flexShrink: 0
+        background: 'var(--bg-surface)', flexShrink: 0
       }}>
-        <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--border)' }}>
-          <h2 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>Problems</h2>
+        <div style={{ padding: '14px 14px 10px', borderBottom: '1px solid var(--border)' }}>
+          <h2 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Problems ({safe.length})</h2>
           <div style={{ position: 'relative' }}>
             <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               className="input-field"
-              style={{ paddingLeft: 30, fontSize: 12, height: 34 }}
-              placeholder="Search…"
+              style={{ paddingLeft: 28, fontSize: 12, height: 30 }}
+              placeholder="Search problems…"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
           </div>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '6px' }}>
           {filtered.length === 0 ? (
             <div style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
-              {safe.length === 0 ? 'Sync problems first' : 'No matches'}
+              {safe.length === 0 ? 'Sync problems first' : 'No matches found'}
             </div>
           ) : filtered.map(p => (
             <div
               key={p._id}
               onClick={() => setSelectedId(p._id)}
               style={{
-                padding: '10px 12px', borderRadius: 10, cursor: 'pointer', marginBottom: 3,
-                background: selectedId === p._id ? 'var(--indigo-dim)' : 'transparent',
-                border: `1px solid ${selectedId === p._id ? 'rgba(99,102,241,0.25)' : 'transparent'}`,
+                padding: '8px 10px', borderRadius: 4, cursor: 'pointer', marginBottom: 2,
+                background: selectedId === p._id ? 'var(--bg-muted)' : 'transparent',
+                borderLeft: selectedId === p._id ? '3px solid var(--accent)' : '3px solid transparent',
                 transition: 'all 0.15s'
               }}
-              onMouseEnter={e => { if (selectedId !== p._id) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
-              onMouseLeave={e => { if (selectedId !== p._id) e.currentTarget.style.background = 'transparent'; }}
             >
-              <div style={{ fontSize: 12, fontWeight: 600, color: selectedId === p._id ? 'var(--indigo-light)' : 'var(--text-primary)', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: selectedId === p._id ? 'var(--accent)' : 'var(--text-primary)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {p.title}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{p.platform}</span>
-                <span className={getDiffClass(p.difficulty)} style={{ fontSize: 9, padding: '2px 6px' }}>{p.difficulty}</span>
+                <span className={`badge ${p.platform === 'LeetCode' ? 'badge-lc' : 'badge-cf'}`} style={{ fontSize: 9 }}>{p.platform}</span>
+                <span className={getRatingClass(p.difficulty)} style={{ fontSize: 11 }}>{p.difficulty}</span>
               </div>
             </div>
           ))}
@@ -113,86 +121,77 @@ export default function NotesView({ problems, onUpdateNote }) {
           <>
             {/* Problem header */}
             <div style={{
-              padding: '16px 24px', borderBottom: '1px solid var(--border)',
-              background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+              padding: '14px 20px', borderBottom: '1px solid var(--border)',
+              background: 'var(--bg-surface)', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
             }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{selected.platform}</span>
-                  <ChevronRight size={12} color="var(--text-muted)" />
-                  <span className={getDiffClass(selected.difficulty)} style={{ fontSize: 10, padding: '2px 7px' }}>{selected.difficulty}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <span className={`badge ${selected.platform === 'LeetCode' ? 'badge-lc' : 'badge-cf'}`}>{selected.platform}</span>
+                  <ChevronRight size={12} style={{ color: 'var(--text-muted)' }} />
+                  <span className={getRatingClass(selected.difficulty)} style={{ fontSize: 12 }}>{selected.difficulty}</span>
                 </div>
-                <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>{selected.title}</h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                  <Clock size={11} color="var(--text-muted)" />
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    Updated {new Date(selected.updatedAt || selected.lastUpdated || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </span>
-                </div>
+                <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{selected.title}</h2>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 {editing ? (
                   <>
-                    <button className="btn-ghost" onClick={() => setEditing(false)} style={{ fontSize: 12, padding: '7px 14px' }}>
-                      <X size={13} /> Cancel
+                    <button className="btn-ghost" onClick={() => setEditing(false)} style={{ fontSize: 12, padding: '6px 12px' }}>
+                      <X size={12} /> Cancel
                     </button>
-                    <button className="btn-primary" onClick={handleSave} style={{ fontSize: 12, padding: '7px 14px' }}>
-                      <Save size={13} /> Save
+                    <button className="btn-primary" onClick={handleSave} style={{ fontSize: 12, padding: '6px 12px' }}>
+                      <Save size={12} /> Save
                     </button>
                   </>
                 ) : (
-                  <button className="btn-primary" onClick={() => setEditing(true)} style={{ fontSize: 12, padding: '7px 14px' }}>
-                    <Edit3 size={13} /> Edit Note
+                  <button className="btn-primary" onClick={() => setEditing(true)} style={{ fontSize: 12, padding: '6px 12px' }}>
+                    <Edit3 size={12} /> Edit Note
                   </button>
                 )}
               </div>
             </div>
 
             {/* Tabs */}
-            <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', background: 'var(--bg-card)', padding: '0 24px' }}>
+            <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '0 20px' }}>
               {TABS.map(t => (
                 <button key={t} onClick={() => setTab(t)} style={{
-                  padding: '12px 16px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
-                  background: 'none', color: tab === t ? 'var(--indigo-light)' : 'var(--text-muted)',
-                  borderBottom: tab === t ? '2px solid var(--indigo)' : '2px solid transparent',
-                  transition: 'color 0.15s', display: 'flex', alignItems: 'center', gap: 6
+                  padding: '10px 14px', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
+                  background: 'none', color: tab === t ? 'var(--accent)' : 'var(--text-muted)',
+                  borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
+                  fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: 6
                 }}>
-                  {t === 'Explanation' && <FileText size={13} />}
-                  {t === 'Code' && <Terminal size={13} />}
-                  {t === 'Complexity' && <Zap size={13} />}
+                  {t === 'Explanation' && <FileText size={12} />}
+                  {t === 'Code' && <Terminal size={12} />}
+                  {t === 'Complexity' && <Zap size={12} />}
                   {t}
                 </button>
               ))}
             </div>
 
             {/* Content */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
               {tab === 'Explanation' && (
                 editing ? (
                   <textarea
                     value={form.explanation}
                     onChange={e => setForm({ ...form, explanation: e.target.value })}
                     placeholder="Write your explanation, approach, and key insights here…"
+                    className="input-field"
                     style={{
-                      width: '100%', height: 'calc(100vh - 340px)', background: 'var(--bg-card)',
-                      border: '1px solid var(--border)', borderRadius: 12, padding: 16,
-                      color: 'var(--text-primary)', fontSize: 14, fontFamily: 'Inter, sans-serif',
-                      lineHeight: 1.7, outline: 'none', resize: 'none', transition: 'border-color 0.15s'
+                      width: '100%', height: 'calc(100vh - 300px)',
+                      padding: 14, fontSize: 13, lineHeight: 1.6, resize: 'none'
                     }}
-                    onFocus={e => e.target.style.borderColor = 'var(--indigo)'}
-                    onBlur={e => e.target.style.borderColor = 'var(--border)'}
                   />
                 ) : (
                   <div style={{ maxWidth: 760 }}>
                     {selected.explanation ? (
-                      <div style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+                      <div style={{ color: 'var(--text-primary)', fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
                         {selected.explanation}
                       </div>
                     ) : (
                       <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
-                        <BookOpen size={40} style={{ margin: '0 auto 12px', opacity: 0.2 }} />
-                        <p style={{ fontSize: 14 }}>No explanation yet</p>
-                        <p style={{ fontSize: 12, marginTop: 4 }}>Click "Edit Note" to add your approach and insights</p>
+                        <BookOpen size={36} style={{ margin: '0 auto 10px', opacity: 0.2 }} />
+                        <p style={{ fontSize: 13 }}>No explanation notes yet</p>
+                        <p style={{ fontSize: 11, marginTop: 2 }}>Click "Edit Note" to add your approach and notes</p>
                       </div>
                     )}
                   </div>
@@ -205,59 +204,57 @@ export default function NotesView({ problems, onUpdateNote }) {
                     value={form.code}
                     onChange={e => setForm({ ...form, code: e.target.value })}
                     placeholder="// Paste your solution code here…"
+                    className="input-field"
                     style={{
-                      width: '100%', height: 'calc(100vh - 340px)', background: 'var(--bg-base)',
-                      border: '1px solid var(--border)', borderRadius: 12, padding: 16,
-                      color: '#a5f3fc', fontSize: 13, fontFamily: '"JetBrains Mono", monospace',
-                      lineHeight: 1.6, outline: 'none', resize: 'none', transition: 'border-color 0.15s'
+                      width: '100%', height: 'calc(100vh - 300px)',
+                      padding: 14, fontSize: 12, fontFamily: 'var(--font-mono)',
+                      lineHeight: 1.6, resize: 'none', color: 'var(--cf-cyan)'
                     }}
-                    onFocus={e => e.target.style.borderColor = 'var(--indigo)'}
-                    onBlur={e => e.target.style.borderColor = 'var(--border)'}
                   />
                 ) : (
                   (selected.codeImplementation || selected.codeImplmentation) ? (
-                    <pre className="code-block" style={{ maxHeight: 'calc(100vh - 260px)', overflowY: 'auto' }}>
+                    <pre className="code-block" style={{ maxHeight: 'calc(100vh - 240px)', overflowY: 'auto' }}>
                       {selected.codeImplementation || selected.codeImplmentation}
                     </pre>
                   ) : (
                     <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
-                      <Code size={40} style={{ margin: '0 auto 12px', opacity: 0.2 }} />
-                      <p style={{ fontSize: 14 }}>No code saved yet</p>
-                      <p style={{ fontSize: 12, marginTop: 4 }}>Add your solution in edit mode</p>
+                      <Code size={36} style={{ margin: '0 auto 10px', opacity: 0.2 }} />
+                      <p style={{ fontSize: 13 }}>No code saved yet</p>
+                      <p style={{ fontSize: 11, marginTop: 2 }}>Add code in edit mode</p>
                     </div>
                   )
                 )
               )}
 
               {tab === 'Complexity' && (
-                <div style={{ maxWidth: 500 }}>
+                <div style={{ maxWidth: 480 }}>
                   {editing ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                       {[
                         { label: 'Time Complexity', key: 'timeComplexity', placeholder: 'e.g. O(N log N)' },
                         { label: 'Space Complexity', key: 'spaceComplexity', placeholder: 'e.g. O(N)' },
                       ].map(f => (
                         <div key={f.key}>
-                          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>{f.label}</label>
+                          <label style={{ display: 'block', fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginBottom: 6 }}>{f.label}</label>
                           <input
                             className="input-field"
                             value={form[f.key]}
                             onChange={e => setForm({ ...form, [f.key]: e.target.value })}
                             placeholder={f.placeholder}
-                            style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 14 }}
+                            style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}
                           />
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {[
                         { label: 'Time Complexity', value: typeof selected.complexity === 'object' ? selected.complexity?.time : selected.complexity },
                         { label: 'Space Complexity', value: typeof selected.complexity === 'object' ? selected.complexity?.space : '' },
                       ].map(c => (
-                        <div key={c.label} className="glass" style={{ borderRadius: 12, padding: '16px 18px' }}>
-                          <p style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{c.label}</p>
-                          <p style={{ fontSize: 20, fontFamily: '"JetBrains Mono", monospace', color: c.value ? 'var(--indigo-light)' : 'var(--text-muted)', fontWeight: 600 }}>
+                        <div key={c.label} className="glass" style={{ borderRadius: 6, padding: '14px 16px' }}>
+                          <p style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginBottom: 6 }}>{c.label}</p>
+                          <p style={{ fontSize: 16, fontFamily: 'var(--font-mono)', color: c.value ? 'var(--cf-cyan)' : 'var(--text-muted)', fontWeight: 600 }}>
                             {c.value || '—'}
                           </p>
                         </div>
@@ -269,12 +266,10 @@ export default function NotesView({ problems, onUpdateNote }) {
             </div>
           </>
         ) : (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: 'var(--text-muted)', gap: 12 }}>
-            <div style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--indigo-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <BookOpen size={24} color="var(--indigo-light)" />
-            </div>
-            <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Select a problem</p>
-            <p style={{ fontSize: 13 }}>Choose a problem from the sidebar to view or edit your notes</p>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: 'var(--text-muted)', gap: 10 }}>
+            <BookOpen size={32} style={{ opacity: 0.3 }} />
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Select a problem</p>
+            <p style={{ fontSize: 12 }}>Choose a problem from the left sidebar to view or edit notes</p>
           </div>
         )}
       </div>
