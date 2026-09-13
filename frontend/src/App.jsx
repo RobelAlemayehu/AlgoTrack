@@ -329,8 +329,8 @@ export default function App() {
   // ── Sync ──────────────────────────────────────────────────────────────────
   const handleSync = async () => {
     if (!userSettings.leetcodeHandle && !userSettings.codeforcesHandle) {
-      showPopup('Setup Required', 'Add your LeetCode or Codeforces handle in Settings first.', 'warning');
-      setActiveTab('Settings'); return;
+      showPopup('Setup Required', 'Add your LeetCode or Codeforces handle in Profile first.', 'warning');
+      setActiveTab('Profile'); return;
     }
     setLoading(true);
     try {
