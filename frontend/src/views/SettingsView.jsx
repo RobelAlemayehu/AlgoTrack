@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Save, RefreshCw, CheckCircle2, AlertCircle, Download, Sun, Moon, RotateCcw, Sliders, Globe, Copy, ExternalLink, Eye } from 'lucide-react';
+import { Save, RefreshCw, CheckCircle2, AlertCircle, Download, Sun, Moon, RotateCcw, Sliders, Globe, Copy, ExternalLink, Eye, Trash2, AlertTriangle } from 'lucide-react';
 
 const API = import.meta.env.VITE_API || 'http://localhost:5000';
 
-export default function SettingsView({ userSettings, token, showPopup, theme, onThemeToggle }) {
+export default function SettingsView({ userSettings, token, showPopup, theme, onThemeToggle, onOpenDeleteModal }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null);
   const [archivedCount, setArchivedCount] = useState(0);
@@ -85,6 +85,29 @@ export default function SettingsView({ userSettings, token, showPopup, theme, on
       window.URL.revokeObjectURL(url);
     } catch (e) {
       window.open(`${API}/api/sync/export?format=${format}&token=${token}`, '_blank');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`${API}/api/auth/account`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showPopup?.('Account Deleted', 'Your account has been deleted.', 'info');
+        onLogout?.();
+      } else {
+        showPopup?.('Deletion Failed', data.msg || 'Could not delete account.', 'error');
+        setDeleting(false);
+        setShowDeleteModal(false);
+      }
+    } catch (err) {
+      showPopup?.('Error', 'Network error while deleting account.', 'error');
+      setDeleting(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -171,6 +194,30 @@ export default function SettingsView({ userSettings, token, showPopup, theme, on
           </button>
           <button className="btn-ghost" onClick={() => handleDownloadExport('csv')} style={{ fontSize: 12 }}>
             <Download size={13} /> Export CSV
+          </button>
+        </div>
+      </div>
+
+      {/* Danger Zone Panel */}
+      <div className="glass" style={{ borderRadius: 6, padding: '18px 20px', borderColor: 'rgba(255, 123, 114, 0.3)' }}>
+        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--cf-red)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <AlertTriangle size={15} /> Danger Zone
+        </h2>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
+          Permanently deactivate your user account and log out.
+        </p>
+        <div>
+          <button
+            onClick={onOpenDeleteModal}
+            style={{
+              padding: '7px 14px', borderRadius: 6,
+              background: 'var(--red-dim)', color: 'var(--cf-red)',
+              border: '1px solid rgba(255, 123, 114, 0.4)',
+              fontWeight: 600, fontSize: 12, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6
+            }}
+          >
+            <Trash2 size={13} /> Delete Account
           </button>
         </div>
       </div>

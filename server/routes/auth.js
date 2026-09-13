@@ -48,6 +48,9 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ msg: "Invalid credentials" });
+    if (user.isDeleted) {
+      return res.status(400).json({ msg: "This account has been deleted. Please contact support if you believe this is an error." });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
@@ -194,11 +197,22 @@ router.put('/username', auth, async (req, res) => {
   }
 });
 
-// Logout endpoint
-router.post('/logout', auth, async (req, res) => {
+// Delete (soft delete) user account
+router.delete('/account', auth, async (req, res) => {
   try {
-    await User.findByIdAndUpdate(req.user.id, { refreshToken: '' });
-    res.json({ msg: 'Logged out successfully' });
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ msg: 'User not found' });
+    if (user.isDeleted) return res.status(400).json({ msg: 'Account is already deleted' });
+
+    user.isDeleted = true;
+    user.deletedAt = new Date();
+    user.refreshToken = '';
+    if (user.publicProfile) {
+      user.publicProfile.enabled = false;
+    }
+    await user.save();
+
+    res.json({ msg: 'Account deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

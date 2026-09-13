@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AlertTriangle, Trash2 } from 'lucide-react';
 import './index.css';
 
 import Popup        from './components/ui/Popup';
@@ -170,6 +171,32 @@ export default function App() {
   const [cfRating,   setCfRating]   = useState(0);
   const [cfMaxRating,setCfMaxRating]= useState(0);
   const [cfRank,     setCfRank]     = useState('');
+
+  // ── Account Deletion ──────────────────────────────────────────────────────
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  const handleConfirmDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      const res = await fetch(`${API}/api/auth/account`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showPopup('Account Deleted', 'Your account has been deleted.', 'info');
+        handleLogout();
+      } else {
+        showPopup('Deletion Failed', data.msg || 'Could not delete account.', 'error');
+      }
+    } catch (err) {
+      showPopup('Error', 'Network error while deleting account.', 'error');
+    } finally {
+      setDeletingAccount(false);
+      setShowDeleteModal(false);
+    }
+  };
 
   // ── Notifications ────────────────────────────────────────────────────────
   const [notifications, setNotifications] = useState([]);
@@ -444,7 +471,7 @@ export default function App() {
       case 'Groups':
         return <GroupsView token={token} showPopup={showPopup} />;
       case 'Settings':
-        return <SettingsView userSettings={userSettings} setUserSettings={setUserSettings} token={token} showPopup={showPopup} theme={theme} onThemeToggle={toggleTheme} />;
+        return <SettingsView userSettings={userSettings} setUserSettings={setUserSettings} token={token} showPopup={showPopup} theme={theme} onThemeToggle={toggleTheme} onOpenDeleteModal={() => setShowDeleteModal(true)} />;
       case 'Compare':
         return <CompareView token={token} />;
       case 'Profile':
@@ -477,7 +504,7 @@ export default function App() {
         onToggleCollapse={toggleSidebarCollapse}
       />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
         <Header
           onSync={handleSync}
           loading={loading}
@@ -492,6 +519,57 @@ export default function App() {
         <main style={{ flex: 1, overflowY: 'auto' }}>
           {renderView()}
         </main>
+
+        {/* Delete Account Confirmation Modal (Blurs main view area while keeping Sidebar crisp) */}
+        {showDeleteModal && (
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(13, 17, 23, 0.75)', backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 9999, padding: 20
+          }}>
+            <div
+              className="glass animate-fade-in"
+              onClick={e => e.stopPropagation()}
+              style={{
+                maxWidth: 440, width: '100%', padding: 24, borderRadius: 12,
+                borderColor: 'rgba(255, 123, 114, 0.4)', background: 'var(--bg-surface)',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.6)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, color: 'var(--cf-red)' }}>
+                <AlertTriangle size={24} />
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>Delete Account</h3>
+              </div>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 20 }}>
+                Are you sure you want to delete your account? You will be logged out immediately and will no longer be able to log in.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={deletingAccount}
+                  className="btn-ghost"
+                  style={{ fontSize: 13 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDeleteAccount}
+                  disabled={deletingAccount}
+                  style={{
+                    padding: '8px 16px', borderRadius: 6,
+                    background: 'var(--cf-red)', color: '#fff', border: 'none',
+                    fontWeight: 600, fontSize: 13, cursor: deletingAccount ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6
+                  }}
+                >
+                  <Trash2 size={14} /> {deletingAccount ? 'Deleting...' : 'Yes, Delete My Account'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <Popup {...popup} onClose={closePopup} />

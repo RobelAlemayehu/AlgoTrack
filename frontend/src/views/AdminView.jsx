@@ -297,6 +297,7 @@ export default function AdminView({ token, showPopup }) {
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                 <th style={{ padding: '10px 12px' }}>User</th>
+                <th style={{ padding: '10px 12px' }}>Status</th>
                 <th style={{ padding: '10px 12px' }}>Email</th>
                 <th style={{ padding: '10px 12px' }}>LeetCode</th>
                 <th style={{ padding: '10px 12px' }}>Codeforces</th>
@@ -308,21 +309,32 @@ export default function AdminView({ token, showPopup }) {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <td colSpan={8} style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>
                     Loading users data...
                   </td>
                 </tr>
               ) : usersData.users.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <td colSpan={8} style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>
                     No users found matching query.
                   </td>
                 </tr>
               ) : (
                 usersData.users.map(u => (
-                  <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <tr key={u.id} style={{ borderBottom: '1px solid var(--border)', opacity: u.isDeleted ? 0.75 : 1 }}>
                     <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>
                       {u.username}
+                    </td>
+                    <td style={{ padding: '10px 12px' }}>
+                      {u.isDeleted ? (
+                        <span className="badge" style={{ background: 'var(--red-dim)', color: 'var(--cf-red)', border: '1px solid rgba(255,123,114,0.3)' }}>
+                          Deleted
+                        </span>
+                      ) : (
+                        <span className="badge" style={{ background: 'var(--emerald-dim)', color: 'var(--cf-green)', border: '1px solid rgba(63,185,80,0.3)' }}>
+                          Active
+                        </span>
+                      )}
                     </td>
                     <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>
                       {u.email}

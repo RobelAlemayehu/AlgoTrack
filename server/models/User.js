@@ -63,6 +63,8 @@ const UserSchema = new mongoose.Schema({
     theme: { type: String, enum: ['dark', 'light'], default: 'dark' }
   },
   isAdmin:   { type: Boolean, default: false },
+  isDeleted: { type: Boolean, default: false },
+  deletedAt: { type: Date, default: null },
   lastLogin: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now }
 });

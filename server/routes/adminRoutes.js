@@ -28,7 +28,7 @@ router.get('/users', async (req, res) => {
 
     const totalUsers = await User.countDocuments(filter);
     const users = await User.find(filter)
-      .select('username email handles.leetcode handles.codeforces createdAt lastSync')
+      .select('username email handles.leetcode handles.codeforces createdAt lastSync isDeleted deletedAt')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -51,6 +51,8 @@ router.get('/users', async (req, res) => {
       id: u._id,
       username: u.username,
       email: u.email,
+      isDeleted: u.isDeleted || false,
+      deletedAt: u.deletedAt || null,
       handles: {
         leetcode: u.handles?.leetcode || '',
         codeforces: u.handles?.codeforces || ''
