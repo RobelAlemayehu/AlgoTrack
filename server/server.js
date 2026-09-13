@@ -16,6 +16,7 @@ const simulatorRoutes = require('./routes/simulatorRoutes');
 const publicRoutes = require('./routes/publicRoutes');
 const groupRoutes = require('./routes/groupRoutes');
 const recommendRoutes = require('./routes/recommendRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 dotenv.config();
 connectDB();
@@ -36,6 +37,7 @@ app.use('/api/simulator', simulatorRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/recommend', recommendRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get('/api/docs', (req, res) => {
     res.sendFile(require('path').join(__dirname, 'swagger.json'));

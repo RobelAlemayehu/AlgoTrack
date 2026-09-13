@@ -1,6 +1,7 @@
 const axios = require('axios');
 const Problem = require('../models/Problem.js');
 const User = require('../models/User');
+const SyncLog = require('../models/SyncLog');
 const { checkAndAwardBadges } = require('./badgeController');
 
 const syncCodeforces = async (req, res) => {
@@ -221,6 +222,8 @@ const syncCodeforces = async (req, res) => {
 
     const totalCFProblems = await Problem.countDocuments({ userId: req.user.id, platform: 'Codeforces', archived: { $ne: true } });
 
+    await SyncLog.create({ userId: req.user.id, platform: 'codeforces', status: 'success' }).catch(() => {});
+
     res.json({
       message: 'Codeforces synced!',
       count: totalCFProblems,
@@ -233,6 +236,7 @@ const syncCodeforces = async (req, res) => {
 
   } catch (error) {
     console.error('CF Sync Error:', error.message);
+    await SyncLog.create({ userId: req.user.id, platform: 'codeforces', status: 'failure', errorMessage: error.message }).catch(() => {});
     res.status(500).json({ error: error.message });
   }
 };

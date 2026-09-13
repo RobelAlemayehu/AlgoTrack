@@ -1,6 +1,7 @@
 const axios = require('axios');
 const Problem = require('../models/Problem');
 const User = require('../models/User');
+const SyncLog = require('../models/SyncLog');
 
 const LC_GQL  = 'https://leetcode.com/graphql';
 const LC_API  = 'https://alfa-leetcode-api.onrender.com'; // public LC proxy — no auth needed
@@ -476,6 +477,8 @@ const syncLeetCode = async (req, res) => {
 
     const totalLCProblems = await Problem.countDocuments({ userId: req.user.id, platform: 'LeetCode', archived: { $ne: true } });
 
+    await SyncLog.create({ userId: req.user.id, platform: 'leetcode', status: 'success' }).catch(() => {});
+
     res.json({
       message: 'LeetCode synced!',
       countSynced: totalLCProblems,
@@ -486,6 +489,7 @@ const syncLeetCode = async (req, res) => {
 
   } catch (error) {
     console.error('LeetCode Sync Error:', error.message);
+    await SyncLog.create({ userId: req.user.id, platform: 'leetcode', status: 'failure', errorMessage: error.message }).catch(() => {});
     res.status(500).json({ error: error.message });
   }
 };

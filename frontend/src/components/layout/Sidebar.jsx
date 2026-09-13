@@ -2,7 +2,7 @@ import React from 'react';
 import {
   LayoutDashboard, Activity, BarChart3, BookOpen,
   Settings, LogOut, Zap, Users, Repeat, User, Map, Target, Timer,
-  PanelLeftClose
+  PanelLeftClose, ShieldCheck
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { id: 'Groups',    icon: <Users size={16} />,           label: 'Study Groups' },
   { id: 'Compare',   icon: <Users size={16} />,           label: 'Compare' },
   { id: 'Profile',   icon: <User size={16} />,            label: 'Profile' },
+  { id: 'Admin',     icon: <ShieldCheck size={16} />,     label: 'Admin', adminOnly: true },
 ];
 
 export default function Sidebar({ activeTab, setActiveTab, user, onLogout, totalSolved, isOpen, collapsed, onToggleCollapse }) {
@@ -123,7 +124,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout, total
 
       {/* Nav List */}
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
-        {NAV_ITEMS.map(item => (
+        {NAV_ITEMS.filter(item => !item.adminOnly || user?.isAdmin === true).map(item => (
           <div
             key={item.id}
             className={`nav-item${activeTab === item.id ? ' active' : ''}`}

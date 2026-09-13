@@ -62,7 +62,9 @@ const UserSchema = new mongoose.Schema({
   preferences: {
     theme: { type: String, enum: ['dark', 'light'], default: 'dark' }
   },
-  createdAt:  { type: Date, default: Date.now }
+  isAdmin:   { type: Boolean, default: false },
+  lastLogin: { type: Date, default: null },
+  createdAt: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model('User', UserSchema);

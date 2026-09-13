@@ -52,6 +52,9 @@ router.post('/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
 
+    user.lastLogin = new Date();
+    await user.save();
+
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
     
     res.json({
@@ -59,7 +62,8 @@ router.post('/login', async (req, res) => {
       user: {
         id: user._id,
         username: user.username,
-        tier: user.tier || "Free Tier"
+        tier: user.tier || "Free Tier",
+        isAdmin: user.isAdmin || false
       }
     });
   } catch (err) {
@@ -77,6 +81,7 @@ router.get('/profile', auth, async (req, res) => {
       id: user._id,
       username: user.username,
       email: user.email,
+      isAdmin:    user.isAdmin    || false,
       handles:    user.handles    || { leetcode: '', codeforces: '', lcSession: '' },
       lcStats:    user.lcStats    || {},
       lcCalendar: user.lcCalendar || {},

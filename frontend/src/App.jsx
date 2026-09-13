@@ -20,6 +20,7 @@ import DrillView     from './views/DrillView';
 import SimulatorView from './views/SimulatorView';
 import PublicProfileView from './views/PublicProfileView';
 import GroupsView    from './views/GroupsView';
+import AdminView     from './views/AdminView';
 
 import { API } from './config/api';
 
@@ -448,6 +449,8 @@ export default function App() {
         return <CompareView token={token} />;
       case 'Profile':
         return <ProfileView userSettings={userSettings} setUserSettings={setUserSettings} token={token} showPopup={showPopup} onDataRefresh={fetchData} user={user} totalSolved={totalSolved} lcStats={lcStats} problems={problems} streak={streak} />;
+      case 'Admin':
+        return <AdminView token={token} showPopup={showPopup} />;
       default:
         return null;
     }
