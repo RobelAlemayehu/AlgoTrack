@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Lock, Mail, Save, Key, CheckCircle2, AlertCircle, RefreshCw, ExternalLink, ShieldAlert } from 'lucide-react';
+import { User, Lock, Mail, Save, Key, CheckCircle2, AlertCircle, RefreshCw, ExternalLink, ShieldAlert, Eye, EyeOff } from 'lucide-react';
 import ShareProfileCard from '../components/ShareProfileCard';
 
 const API = import.meta.env.VITE_API || 'http://localhost:5000';
@@ -29,6 +29,10 @@ export default function ProfileView({ userSettings, setUserSettings, token, show
   const [userLoading, setUserLoading] = useState(false);
   const [status, setStatus] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -340,38 +344,83 @@ export default function ProfileView({ userSettings, setUserSettings, token, show
         <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Current Password</label>
-            <input
-              className="input-field"
-              type="password"
-              placeholder="••••••••"
-              value={passwordForm.currentPassword}
-              onChange={e => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-              required
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                className="input-field"
+                type={showCurrentPass ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={passwordForm.currentPassword}
+                onChange={e => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                required
+                style={{ paddingRight: 36, width: '100%' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrentPass(v => !v)}
+                style={{
+                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 2
+                }}
+                title={showCurrentPass ? 'Hide password' : 'Show password'}
+              >
+                {showCurrentPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
 
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>New Password</label>
-            <input
-              className="input-field"
-              type="password"
-              placeholder="••••••••"
-              value={passwordForm.newPassword}
-              onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-              required
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                className="input-field"
+                type={showNewPass ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={passwordForm.newPassword}
+                onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                required
+                style={{ paddingRight: 36, width: '100%' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPass(v => !v)}
+                style={{
+                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 2
+                }}
+                title={showNewPass ? 'Hide password' : 'Show password'}
+              >
+                {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
 
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Confirm New Password</label>
-            <input
-              className="input-field"
-              type="password"
-              placeholder="••••••••"
-              value={passwordForm.confirmPassword}
-              onChange={e => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-              required
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                className="input-field"
+                type={showConfirmPass ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={passwordForm.confirmPassword}
+                onChange={e => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                required
+                style={{ paddingRight: 36, width: '100%' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPass(v => !v)}
+                style={{
+                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 2
+                }}
+                title={showConfirmPass ? 'Hide password' : 'Show password'}
+              >
+                {showConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
             {passwordForm.confirmPassword && !passwordsMatch && (
               <p style={{ fontSize: 11, color: 'var(--cf-red)', marginTop: 4 }}>New password and confirm password do not match.</p>
             )}
