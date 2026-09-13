@@ -6,6 +6,7 @@ import Popup        from './components/ui/Popup';
 import Sidebar      from './components/layout/Sidebar';
 import Header       from './components/layout/Header';
 import ToastContainer from './components/ToastContainer';
+import OnboardingWizard from './components/OnboardingWizard';
 
 import AuthView      from './views/AuthView';
 import DashboardView from './views/DashboardView';
@@ -172,9 +173,10 @@ export default function App() {
   const [cfMaxRating,setCfMaxRating]= useState(0);
   const [cfRank,     setCfRank]     = useState('');
 
-  // ── Account Deletion ──────────────────────────────────────────────────────
+  // ── Account Deletion & Onboarding ─────────────────────────────────────────
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [showOnboarding,  setShowOnboarding]  = useState(false);
 
   const handleConfirmDeleteAccount = async () => {
     setDeletingAccount(true);
@@ -257,6 +259,7 @@ export default function App() {
         if (profData.cfMaxRating) setCfMaxRating(profData.cfMaxRating);
         if (profData.cfRank)      setCfRank(profData.cfRank);
         if (profData.preferences?.theme) setTheme(profData.preferences.theme);
+        if (profData.hasCompletedOnboarding === false) setShowOnboarding(true);
       }
 
       const tzOffset = new Date().getTimezoneOffset();
@@ -310,6 +313,7 @@ export default function App() {
         setToken(data.token); setUser(data.user);
         setProblems([]); setLcStats({}); setLcCalendar({});
         setCfRating(0); setCfRank(''); setLastSyncTime(null);
+        if (data.user?.hasCompletedOnboarding === false) setShowOnboarding(true);
       } else {
         setAuthErr(data.msg || 'Authentication failed');
       }
@@ -502,6 +506,7 @@ export default function App() {
         isOpen={sidebarOpen}
         collapsed={sidebarCollapsed}
         onToggleCollapse={toggleSidebarCollapse}
+        onOpenOnboarding={() => setShowOnboarding(true)}
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
@@ -576,6 +581,15 @@ export default function App() {
       <ToastContainer
         toasts={notifications.map(n => ({ id: n.id, title: 'Streak Warning', message: n.text, type: 'streak' }))}
         onCloseToast={id => setNotifications(prev => prev.filter(x => x.id !== id))}
+      />
+      <OnboardingWizard
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        token={token}
+        userSettings={userSettings}
+        setUserSettings={setUserSettings}
+        onDataRefresh={fetchData}
+        showPopup={showPopup}
       />
     </div>
   );

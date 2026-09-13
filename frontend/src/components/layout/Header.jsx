@@ -59,7 +59,7 @@ export default function Header({ onSync, loading, onSearch, searchQuery, notific
             </button>
 
             {/* Sync button */}
-            <button className="btn-primary" onClick={onSync} disabled={loading} style={{ fontSize: 12, height: 34 }}>
+            <button data-tour="sync" className="btn-primary" onClick={onSync} disabled={loading} style={{ fontSize: 12, height: 34 }}>
               <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
               {loading ? 'Syncing…' : 'Sync Now'}
             </button>

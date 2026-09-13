@@ -34,7 +34,11 @@ router.post('/register', async (req, res) => {
         res.json({ 
             msg: "User registered successfully!",
             token,
-            user: { id: user._id, username: user.username }
+            user: {
+                id: user._id,
+                username: user.username,
+                hasCompletedOnboarding: false
+            }
         });
 
     } catch (err) {
@@ -66,7 +70,8 @@ router.post('/login', async (req, res) => {
         id: user._id,
         username: user.username,
         tier: user.tier || "Free Tier",
-        isAdmin: user.isAdmin || false
+        isAdmin: user.isAdmin || false,
+        hasCompletedOnboarding: user.hasCompletedOnboarding || false
       }
     });
   } catch (err) {
@@ -85,6 +90,7 @@ router.get('/profile', auth, async (req, res) => {
       username: user.username,
       email: user.email,
       isAdmin:    user.isAdmin    || false,
+      hasCompletedOnboarding: user.hasCompletedOnboarding || false,
       handles:    user.handles    || { leetcode: '', codeforces: '', lcSession: '' },
       lcStats:    user.lcStats    || {},
       lcCalendar: user.lcCalendar || {},
@@ -215,6 +221,29 @@ router.delete('/account', auth, async (req, res) => {
     res.json({ msg: 'Account deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Update onboarding status
+router.put('/onboarding', auth, async (req, res) => {
+  try {
+    const { completed } = req.body;
+    const isCompleted = completed !== undefined ? Boolean(completed) : true;
+    
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: { hasCompletedOnboarding: isCompleted } },
+      { new: true }
+    ).select('-password');
+    
+    if (!user) return res.status(404).json({ msg: 'User not found' });
+    
+    res.json({
+      msg: 'Onboarding status updated',
+      hasCompletedOnboarding: user.hasCompletedOnboarding
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update onboarding status' });
   }
 });
 

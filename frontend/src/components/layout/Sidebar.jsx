@@ -2,7 +2,7 @@ import React from 'react';
 import {
   LayoutDashboard, Activity, BarChart3, BookOpen,
   Settings, LogOut, Zap, Users, Repeat, User, Map, Target, Timer,
-  PanelLeftClose, ShieldCheck
+  PanelLeftClose, ShieldCheck, HelpCircle
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -20,7 +20,7 @@ const NAV_ITEMS = [
   { id: 'Admin',     icon: <ShieldCheck size={16} />,     label: 'Admin', adminOnly: true },
 ];
 
-export default function Sidebar({ activeTab, setActiveTab, user, onLogout, totalSolved, isOpen, collapsed, onToggleCollapse }) {
+export default function Sidebar({ activeTab, setActiveTab, user, onLogout, totalSolved, isOpen, collapsed, onToggleCollapse, onOpenOnboarding }) {
   return (
     <aside className={`sidebar${isOpen ? ' open' : ''}${collapsed ? ' collapsed' : ''}`} style={{
       width: collapsed ? 68 : 240,
@@ -127,6 +127,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout, total
         {NAV_ITEMS.filter(item => !item.adminOnly || user?.isAdmin === true).map(item => (
           <div
             key={item.id}
+            data-tour={item.id.toLowerCase()}
             className={`nav-item${activeTab === item.id ? ' active' : ''}`}
             onClick={() => setActiveTab(item.id)}
             title={collapsed ? item.label : undefined}
@@ -141,8 +142,22 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout, total
         ))}
       </nav>
 
-      {/* Footer / Settings */}
+      {/* Footer / Settings & Onboarding */}
       <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div
+          className="nav-item"
+          onClick={() => onOpenOnboarding?.()}
+          title={collapsed ? "Guided Tour" : undefined}
+          style={{
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            padding: collapsed ? '10px 0' : '8px 10px',
+            color: 'var(--text-muted)'
+          }}
+        >
+          <HelpCircle size={16} style={{ color: 'var(--accent)' }} />
+          {!collapsed && <span>Guided Tour</span>}
+        </div>
+
         <div
           className={`nav-item${activeTab === 'Settings' ? ' active' : ''}`}
           onClick={() => setActiveTab('Settings')}
