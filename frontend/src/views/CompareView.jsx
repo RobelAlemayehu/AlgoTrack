@@ -67,7 +67,7 @@ export default function CompareView({ token }) {
   };
 
   const handleCompare = async () => {
-    if (!cfHandle && !lcHandle) { setError('Enter at least one handle to compare with.'); return; }
+    if (!cfHandle && !lcHandle) { setError('Enter at least one handle.'); return; }
     setLoading(true); setError(''); setResult(null);
     try {
       const params = new URLSearchParams();

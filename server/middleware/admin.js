@@ -16,7 +16,7 @@ module.exports = async function (req, res, next) {
       return next();
     }
 
-    return res.status(403).json({ msg: 'Access denied: Admin privileges required' });
+    return res.status(403).json({ msg: 'Access denied. Admin required.' });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

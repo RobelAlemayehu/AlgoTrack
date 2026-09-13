@@ -237,7 +237,7 @@ const syncCodeforces = async (req, res) => {
   } catch (error) {
     console.error('CF Sync Error:', error.message);
     await SyncLog.create({ userId: req.user.id, platform: 'codeforces', status: 'failure', errorMessage: error.message }).catch(() => {});
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to sync Codeforces.' });
   }
 };
 
@@ -291,7 +291,7 @@ const getProblems = async (req, res) => {
     }
     res.json({ problems, streak });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch problems', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch problems.' });
   }
 };
 

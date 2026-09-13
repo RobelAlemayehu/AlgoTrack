@@ -43,7 +43,7 @@ export default function AdminView({ token, showPopup }) {
 
     } catch (err) {
       console.error('Failed to load admin data:', err);
-      setErrorMsg('Failed to load admin dashboard data. Please check connection.');
+      setErrorMsg('Failed to load admin data.');
     } finally {
       setLoading(false);
     }

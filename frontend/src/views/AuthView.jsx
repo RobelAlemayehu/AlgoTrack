@@ -12,7 +12,7 @@ export default function AuthView({ onAuth, loading, error }) {
     e.preventDefault();
     setLocalErr('');
     if (!isLogin && form.password !== form.confirmPassword) {
-      setLocalErr('Passwords do not match. Please verify your passwords.');
+      setLocalErr('Passwords do not match.');
       return;
     }
     onAuth({ email: form.email, password: form.password, username: form.username }, isLogin);

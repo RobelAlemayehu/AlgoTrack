@@ -49,7 +49,7 @@ router.post('/login', async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ msg: "Invalid credentials" });
     if (user.isDeleted) {
-      return res.status(400).json({ msg: "This account has been deleted. Please contact support if you believe this is an error." });
+      return res.status(400).json({ msg: "Account deleted. Please contact support." });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);

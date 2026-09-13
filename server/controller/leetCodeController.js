@@ -215,7 +215,7 @@ const syncLeetCode = async (req, res) => {
     }
 
     if (!profileData?.matchedUser) {
-      return res.status(404).json({ error: `LeetCode user '${username}' not found. Please verify your exact username on leetcode.com.` });
+      return res.status(404).json({ error: `LeetCode handle '${username}' not found.` });
     }
 
     const { matchedUser } = profileData;
@@ -490,7 +490,7 @@ const syncLeetCode = async (req, res) => {
   } catch (error) {
     console.error('LeetCode Sync Error:', error.message);
     await SyncLog.create({ userId: req.user.id, platform: 'leetcode', status: 'failure', errorMessage: error.message }).catch(() => {});
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to sync LeetCode.' });
   }
 };
 

@@ -314,7 +314,7 @@ export default function App() {
         setAuthErr(data.msg || 'Authentication failed');
       }
     } catch {
-      setAuthErr('Unable to reach the server. Please ensure the backend is running.');
+      setAuthErr('Unable to reach server. Please check connection.');
     } finally { setLoading(false); }
   };
 

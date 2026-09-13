@@ -422,7 +422,7 @@ export default function ProfileView({ userSettings, setUserSettings, token, show
               </button>
             </div>
             {passwordForm.confirmPassword && !passwordsMatch && (
-              <p style={{ fontSize: 11, color: 'var(--cf-red)', marginTop: 4 }}>New password and confirm password do not match.</p>
+              <p style={{ fontSize: 11, color: 'var(--cf-red)', marginTop: 4 }}>Passwords do not match.</p>
             )}
           </div>
 
