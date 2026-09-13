@@ -21,7 +21,8 @@ import SimulatorView from './views/SimulatorView';
 import PublicProfileView from './views/PublicProfileView';
 import GroupsView    from './views/GroupsView';
 
-const API = import.meta.env.VITE_API || 'http://localhost:5000';
+import { API } from './config/api';
+
 
 function getLocalDateStr(dateInput) {
   if (!dateInput) return null;
