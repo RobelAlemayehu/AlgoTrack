@@ -150,7 +150,30 @@ exports.joinGroup = async (req, res) => {
   }
 };
 
-// Leave a study group
+// Delete a study group (creator only)
+exports.deleteGroup = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const group = await Group.findById(groupId);
+
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+
+    if (group.createdBy.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied. Only the group creator can delete this group.' });
+    }
+
+    // Permanently remove the group from the database
+    await Group.findByIdAndDelete(groupId);
+
+    res.json({ message: 'Group permanently deleted from database', isDeleted: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Leave a study group (if creator leaves, group is permanently deleted from database)
 exports.leaveGroup = async (req, res) => {
   try {
     const { groupId } = req.params;
@@ -160,10 +183,19 @@ exports.leaveGroup = async (req, res) => {
       return res.status(404).json({ error: 'Group not found' });
     }
 
+    const isCreator = group.createdBy.toString() === req.user.id;
+
+    if (isCreator) {
+      // Creator deleting / leaving group -> permanently remove group from database
+      await Group.findByIdAndDelete(groupId);
+      return res.json({ message: 'Group permanently deleted from database', isDeleted: true });
+    }
+
+    // Regular member leaving -> simply remove user from members array
     group.members = group.members.filter(m => m.toString() !== req.user.id);
     await group.save();
 
-    res.json({ message: 'Left group successfully' });
+    res.json({ message: 'Left group successfully', isDeleted: false });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -176,14 +208,20 @@ exports.getUserGroups = async (req, res) => {
       .populate('createdBy', 'username')
       .sort({ createdAt: -1 });
 
-    const formatted = groups.map(g => ({
-      _id: g._id,
-      name: g.name,
-      inviteCode: g.inviteCode,
-      createdBy: g.createdBy ? g.createdBy.username : 'Unknown',
-      memberCount: g.members.length,
-      createdAt: g.createdAt
-    }));
+    const formatted = groups.map(g => {
+      const creatorIdStr = g.createdBy ? (g.createdBy._id ? g.createdBy._id.toString() : g.createdBy.toString()) : '';
+      const isCreator = creatorIdStr === req.user.id;
+      return {
+        _id: g._id,
+        name: g.name,
+        inviteCode: g.inviteCode,
+        createdBy: g.createdBy ? g.createdBy.username : 'Unknown',
+        creatorId: creatorIdStr,
+        isCreator,
+        memberCount: g.members.length,
+        createdAt: g.createdAt
+      };
+    });
 
     res.json(formatted);
   } catch (err) {
@@ -205,6 +243,8 @@ exports.getGroupLeaderboard = async (req, res) => {
     if (!group.members.some(m => m._id.toString() === req.user.id)) {
       return res.status(403).json({ error: 'Access denied. You are not a member of this study group.' });
     }
+
+    const isCreator = group.createdBy ? group.createdBy.toString() === req.user.id : false;
 
     // Determine window start date
     let startDate = null;
@@ -269,6 +309,8 @@ exports.getGroupLeaderboard = async (req, res) => {
         name: group.name,
         inviteCode: group.inviteCode,
         memberCount: group.members.length,
+        isCreator,
+        creatorId: group.createdBy ? group.createdBy.toString() : null,
         createdAt: group.createdAt
       },
       window: windowType,

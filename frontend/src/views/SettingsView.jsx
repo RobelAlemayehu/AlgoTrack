@@ -158,46 +158,6 @@ export default function SettingsView({ userSettings, token, showPopup, theme, on
       {/* Public Profile Settings Panel */}
       <PublicProfileSettingsPanel token={token} showPopup={showPopup} />
 
-      {/* Force Resync & Recovery Panel */}
-      <div className="glass" style={{ borderRadius: 6, padding: '18px 20px' }}>
-        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <RefreshCw size={15} style={{ color: 'var(--accent)' }} /> Sync Operations &amp; Recovery
-        </h2>
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
-          Perform full resyncs or restore archived problem history.
-        </p>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <button className="btn-ghost" onClick={handleForceResync} disabled={loading} style={{ fontSize: 12 }}>
-            <RefreshCw size={13} /> Force Full Resync
-          </button>
-
-          {archivedCount > 0 && (
-            <button className="btn-ghost" onClick={handleRestoreArchived} style={{ fontSize: 12, color: 'var(--accent)', borderColor: 'rgba(240,136,62,0.4)' }}>
-              <RotateCcw size={13} /> Restore {archivedCount} Archived Problems
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Export Data Panel */}
-      <div className="glass" style={{ borderRadius: 6, padding: '18px 20px' }}>
-        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Download size={15} style={{ color: 'var(--accent)' }} /> Export Problem Data
-        </h2>
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
-          Download a full backup copy of your solved problems, code snippets, and notes.
-        </p>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn-ghost" onClick={() => handleDownloadExport('json')} style={{ fontSize: 12 }}>
-            <Download size={13} /> Export JSON
-          </button>
-          <button className="btn-ghost" onClick={() => handleDownloadExport('csv')} style={{ fontSize: 12 }}>
-            <Download size={13} /> Export CSV
-          </button>
-        </div>
-      </div>
-
       {/* Danger Zone Panel */}
       <div className="glass" style={{ borderRadius: 6, padding: '18px 20px', borderColor: 'rgba(255, 123, 114, 0.3)' }}>
         <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--cf-red)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>

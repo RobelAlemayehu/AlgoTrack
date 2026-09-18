@@ -203,23 +203,41 @@ router.put('/username', auth, async (req, res) => {
   }
 });
 
-// Delete (soft delete) user account
+// Delete user account permanently from database
 router.delete('/account', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const userId = req.user.id;
+    const user = await User.findById(userId);
     if (!user) return res.status(404).json({ msg: 'User not found' });
-    if (user.isDeleted) return res.status(400).json({ msg: 'Account is already deleted' });
 
-    user.isDeleted = true;
-    user.deletedAt = new Date();
-    user.refreshToken = '';
-    if (user.publicProfile) {
-      user.publicProfile.enabled = false;
-    }
-    await user.save();
+    const Problem = require('../models/Problem');
+    const Group = require('../models/Group');
+    const UserDrill = require('../models/UserDrill');
+    const UserRoadmapProgress = require('../models/UserRoadmapProgress');
+    const SyncLog = require('../models/SyncLog');
+    const ContestSimulation = require('../models/ContestSimulation');
 
-    res.json({ msg: 'Account deleted successfully' });
+    // 1. Delete all problems solved/tracked by user
+    await Problem.deleteMany({ userId });
+
+    // 2. Delete user's drills, roadmap progress, sync logs, and contest simulations
+    await UserDrill.deleteMany({ userId });
+    await UserRoadmapProgress.deleteMany({ userId });
+    await SyncLog.deleteMany({ userId });
+    await ContestSimulation.deleteMany({ userId });
+
+    // 3. Delete any groups created by this user permanently from database
+    await Group.deleteMany({ createdBy: userId });
+
+    // 4. Remove user from members list of any other groups they joined
+    await Group.updateMany({ members: userId }, { $pull: { members: userId } });
+
+    // 5. Permanently remove the user document from database
+    await User.findByIdAndDelete(userId);
+
+    res.json({ msg: 'Account and all associated data permanently removed from database' });
   } catch (err) {
+    console.error('Account Deletion Error:', err);
     res.status(500).json({ error: err.message });
   }
 });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Users, Plus, UserPlus, Copy, LogOut, Flame, Trophy, CheckCircle2, AlertCircle, RefreshCw, X, ShieldCheck, Eye, ExternalLink, Award, Map, ChevronRight } from 'lucide-react';
+import { Users, Plus, UserPlus, Copy, LogOut, Flame, Trophy, CheckCircle2, AlertCircle, RefreshCw, X, ShieldCheck, Eye, ExternalLink, Award, Map, ChevronRight, Trash2 } from 'lucide-react';
 
 const API = import.meta.env.VITE_API || 'http://localhost:5000';
 
@@ -162,26 +162,41 @@ export default function GroupsView({ token, showPopup }) {
     }
   };
 
-  const handleLeaveGroup = async (groupId) => {
-    if (!window.confirm('Are you sure you want to leave this study group?')) return;
+  const handleLeaveOrDeleteGroup = async (groupId, isCreator) => {
+    const confirmMsg = isCreator
+      ? 'Are you sure you want to delete this study group? This will permanently remove the group from the database for all members.'
+      : 'Are you sure you want to leave this study group?';
+
+    if (!window.confirm(confirmMsg)) return;
+
     try {
-      const res = await fetch(`${API}/api/groups/${groupId}/leave`, {
+      const endpoint = isCreator ? `${API}/api/groups/${groupId}` : `${API}/api/groups/${groupId}/leave`;
+      const res = await fetch(endpoint, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
+
       if (res.ok) {
-        showPopup?.('Left Group', 'You have left the study group.', 'info');
+        showPopup?.(
+          isCreator ? 'Group Deleted' : 'Left Group',
+          isCreator ? 'The study group was permanently removed from the database.' : 'You have left the study group.',
+          'info'
+        );
         const remaining = groups.filter(g => g._id !== groupId);
         setGroups(remaining);
         setSelectedGroupId(remaining.length > 0 ? remaining[0]._id : null);
         setLeaderboardData(null);
+      } else {
+        const data = await res.json();
+        showPopup?.('Error', data.error || 'Action failed.', 'error');
       }
     } catch (err) {
-      showPopup?.('Error', 'Failed to leave group.', 'error');
+      showPopup?.('Error', 'Network error.', 'error');
     }
   };
 
   const selectedGroup = groups.find(g => g._id === selectedGroupId);
+  const isGroupCreator = selectedGroup?.isCreator || leaderboardData?.group?.isCreator;
 
   const copyInviteCode = (code) => {
     navigator.clipboard.writeText(code);
@@ -281,11 +296,13 @@ export default function GroupsView({ token, showPopup }) {
                 </div>
 
                 <button
-                  onClick={() => handleLeaveGroup(leaderboardData.group._id)}
+                  onClick={() => handleLeaveOrDeleteGroup(leaderboardData.group._id, isGroupCreator)}
                   className="btn-ghost"
                   style={{ fontSize: 12, color: 'var(--cf-red)', borderColor: 'rgba(255,123,114,0.3)', gap: 6 }}
+                  title={isGroupCreator ? 'Delete study group from database' : 'Leave study group'}
                 >
-                  <LogOut size={13} /> Leave Group
+                  {isGroupCreator ? <Trash2 size={13} /> : <LogOut size={13} />}
+                  {isGroupCreator ? 'Delete Group' : 'Leave Group'}
                 </button>
               </div>
 
