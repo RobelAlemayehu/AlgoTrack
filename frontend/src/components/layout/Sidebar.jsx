@@ -68,7 +68,6 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout, total
               }} />
               <div>
                 <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>AlgoTrack</div>
-                <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>v2.0 · Competitive</div>
               </div>
             </div>
 
