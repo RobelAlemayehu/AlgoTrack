@@ -507,6 +507,7 @@ export default function App() {
         collapsed={sidebarCollapsed}
         onToggleCollapse={toggleSidebarCollapse}
         onOpenOnboarding={() => setShowOnboarding(true)}
+        onClose={() => setSidebarOpen(false)}
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>

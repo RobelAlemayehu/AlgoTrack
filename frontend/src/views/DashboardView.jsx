@@ -282,7 +282,8 @@ export default function DashboardView({ problems, streak, lcStats, totalSolved: 
               No problems synced yet. Click <strong>Sync Now</strong> in the top header to import your submissions.
             </div>
           ) : (
-            <table className="data-table">
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table className="data-table">
               <thead>
                 <tr>
                   <th>Problem</th>
@@ -331,6 +332,7 @@ export default function DashboardView({ problems, streak, lcStats, totalSolved: 
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 
