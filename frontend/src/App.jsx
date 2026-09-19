@@ -297,6 +297,17 @@ export default function App() {
   }, []);
 
   // ── Auth ──────────────────────────────────────────────────────────────────
+  const handleAuthSuccess = (data) => {
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user',  JSON.stringify(data.user));
+      setToken(data.token); setUser(data.user);
+      setProblems([]); setLcStats({}); setLcCalendar({});
+      setCfRating(0); setCfRank(''); setLastSyncTime(null);
+      if (data.user?.hasCompletedOnboarding === false) setShowOnboarding(true);
+    }
+  };
+
   const handleAuth = async (form, isLogin) => {
     setLoading(true); setAuthErr('');
     const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
@@ -308,12 +319,7 @@ export default function App() {
       });
       const data = await res.json();
       if (data.token) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user',  JSON.stringify(data.user));
-        setToken(data.token); setUser(data.user);
-        setProblems([]); setLcStats({}); setLcCalendar({});
-        setCfRating(0); setCfRank(''); setLastSyncTime(null);
-        if (data.user?.hasCompletedOnboarding === false) setShowOnboarding(true);
+        handleAuthSuccess(data);
       } else {
         setAuthErr(data.msg || 'Authentication failed');
       }
@@ -447,7 +453,7 @@ export default function App() {
   if (!token) {
     return (
       <>
-        <AuthView onAuth={handleAuth} loading={loading} error={authErr} />
+        <AuthView onAuth={handleAuth} onAuthSuccess={handleAuthSuccess} loading={loading} error={authErr} />
         <Popup {...popup} onClose={closePopup} />
       </>
     );

@@ -62,6 +62,7 @@ const UserSchema = new mongoose.Schema({
   preferences: {
     theme: { type: String, enum: ['dark', 'light'], default: 'dark' }
   },
+  emailVerified: { type: Boolean, default: false },
   isAdmin:   { type: Boolean, default: false },
   hasCompletedOnboarding: { type: Boolean, default: false },
   isDeleted: { type: Boolean, default: false },
